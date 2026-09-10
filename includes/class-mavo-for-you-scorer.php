@@ -56,10 +56,23 @@ class MFY_Scorer {
 		$geo           = MFY_Geo::session_profile( $weighted, $lang );
 		$debug['geo']  = self::describe_geo( $geo );
 
-		$exclude    = array_merge( [ $current_post_id ], array_column( $ordered, 'post_id' ) );
-		$candidates = self::build_pool( $lang, $interest, $search_filters, $geo, $exclude, $debug );
+		$exclude = array_merge( [ $current_post_id ], array_column( $ordered, 'post_id' ) );
 
-		if ( ! $candidates ) {
+		// Hubs are gathered before the pool and placed before the ranking:
+		// they are an editorial statement about what owns this content, not a
+		// similarity score to be compared with one.
+		$hub_context   = MFY_Hubs::session_context( $weighted, $lang );
+		$hubs          = MFY_Hubs::session_hubs( $weighted, $lang, $exclude );
+		$debug['hubs'] = self::describe_hubs( $hubs, $lang );
+
+		$exclude = array_merge( $exclude, array_column( $hubs, 'post_id' ) );
+
+		// The other children of those hubs: grouped by hand, so a better
+		// guarantee of relevance than any score this plugin can compute.
+		$hub_children = MFY_Hubs::child_candidates( $hub_context, $lang, $exclude );
+		$candidates   = self::build_pool( $lang, $interest, $search_filters, $geo, $hub_children, $exclude, $debug );
+
+		if ( ! $candidates && ! $hubs ) {
 			return [ 'recommendations' => [], 'debug' => $debug ];
 		}
 
@@ -89,7 +102,9 @@ class MFY_Scorer {
 				$interest,
 				$search_filters,
 				$places,
-				$geo
+				$geo,
+				$hub_children[ $post_id ] ?? null,
+				$lang
 			);
 
 			$debug['candidates'][] = [
@@ -119,7 +134,7 @@ class MFY_Scorer {
 			return [ $b['score'], $b['views'], $a['post_id'] ] <=> [ $a['score'], $a['views'], $b['post_id'] ];
 		} );
 
-		$picked = self::pick( $scored, $lang, MFY_Config::num_recommendations(), $geo, $debug );
+		$picked = self::pick( $scored, $lang, MFY_Config::num_recommendations(), $geo, $hubs, $debug );
 
 		$recommendations = [];
 		foreach ( $picked as $entry ) {
@@ -127,7 +142,15 @@ class MFY_Scorer {
 			if ( ! $item ) {
 				continue;
 			}
-			$item['score']     = round( $entry['score'], 2 );
+			$item['score'] = round( $entry['score'], 2 );
+
+			if ( ! empty( $entry['hub_type'] ) ) {
+				$item['hub'] = [
+					'type'  => $entry['hub_type'],
+					'label' => MFY_Hubs::label( $entry['hub_type'], $lang ),
+				];
+			}
+
 			$recommendations[] = $item;
 		}
 
@@ -339,10 +362,12 @@ class MFY_Scorer {
 	 * The filter pool answers "what else is this kind of trip?". The geography
 	 * pool answers "what else is about this place?" — and it has to exist
 	 * separately, because the next London article need not share a single
-	 * strongly scored filter with the ones already read. Both pools are
-	 * bounded, and editorial eligibility (§10) applies to every row of both.
+	 * strongly scored filter with the ones already read. The hub-children pool
+	 * answers "what else did an editor put in here?". All three are bounded,
+	 * and editorial eligibility (§10) applies to every row of all three; only
+	 * the hub pages themselves bypass it.
 	 */
-	private static function build_pool( string $lang, array $interest, array $search_filters, array $geo, array $exclude, array &$debug ): array {
+	private static function build_pool( string $lang, array $interest, array $search_filters, array $geo, array $hub_children, array $exclude, array &$debug ): array {
 		$pool       = [];
 		$pool_slugs = array_values( array_unique( array_merge( array_keys( $interest ), array_keys( $search_filters ) ) ) );
 
@@ -373,6 +398,19 @@ class MFY_Scorer {
 			$debug['pool_geo'] = $added;
 		}
 
+		if ( $hub_children ) {
+			$added = 0;
+
+			foreach ( MFY_Data::filter_eligible( $lang, array_keys( $hub_children ), $exclude ) as $row ) {
+				if ( ! isset( $pool[ $row['post_id'] ] ) ) {
+					$pool[ $row['post_id'] ] = $row;
+					++$added;
+				}
+			}
+
+			$debug['pool_hub_children'] = $added;
+		}
+
 		if ( ! $pool ) {
 			$debug['excluded'][] = $pool_slugs || $place_ids
 				? 'no eligible candidates in either pool'
@@ -391,7 +429,7 @@ class MFY_Scorer {
 	/**
 	 * @return array{0: float, 1: string[], 2: string[], 3: ?array} score, reasons, matched strong slugs, geo affinity.
 	 */
-	private static function score_candidate( array $scores, array $interest, array $search_filters, array $places, array $geo ): array {
+	private static function score_candidate( array $scores, array $interest, array $search_filters, array $places, array $geo, ?array $hub_relationship, string $lang ): array {
 		$labels  = MFY_Data::signal_labels();
 		$total   = 0.0;
 		$reasons = [];
@@ -444,6 +482,17 @@ class MFY_Scorer {
 			);
 		}
 
+		if ( $hub_relationship ) {
+			$points = MFY_Hubs::child_points( $hub_relationship );
+			$total += $points;
+			$reasons[] = sprintf(
+				'+%.2f %s (%s this session is reading in)',
+				$points,
+				get_the_title( $hub_relationship['hub_id'] ),
+				strtolower( MFY_Hubs::label( $hub_relationship['type'], $lang ) ?: 'hub' )
+			);
+		}
+
 		sort( $strong );
 
 		return [ $total, $reasons, $strong, $affinity ];
@@ -468,11 +517,16 @@ class MFY_Scorer {
 	 * article reserves Greater London, or England, rather than showing a lone
 	 * London card and calling it a theme.
 	 */
-	private static function pick( array $scored, string $lang, int $limit, array $geo, array &$debug ): array {
-		$chain    = $geo['chain'] ?? [];
-		$reserved = $chain ? MFY_Config::geo_reserved_slots( $limit ) : 0;
-		$picked   = [];
-		$focus    = null;
+	private static function pick( array $scored, string $lang, int $limit, array $geo, array $hubs, array &$debug ): array {
+		$picked = self::place_hubs( $hubs, $limit, $debug );
+
+		// Whatever the hub did not take is what geography gets to divide up:
+		// with three slots and a hub placed, the focused place reserves one
+		// and one still goes elsewhere.
+		$remaining = $limit - count( $picked );
+		$chain     = $geo['chain'] ?? [];
+		$reserved  = $chain ? MFY_Config::geo_reserved_slots( $remaining ) : 0;
+		$focus     = null;
 
 		if ( $reserved > 0 ) {
 			$best = [];
@@ -495,16 +549,16 @@ class MFY_Scorer {
 				}
 			}
 
-			$picked = array_slice( $best, 0, $reserved );
+			$picked = array_merge( $picked, array_slice( $best, 0, $reserved ) );
 
-			$debug['composition'] = [
+			$debug['composition'] = array_merge( $debug['composition'] ?? [], [
 				'focus_level'    => $focus['level'] ?? null,
 				'focus_place'    => $focus ? ( $geo['places'][ $focus['place_id'] ] ?? $focus['place_id'] ) : null,
 				'focus_share'    => $focus['share'] ?? null,
 				'slots_reserved' => $reserved,
-				'slots_filled'   => count( $picked ),
+				'slots_filled'   => count( $picked ) - ( $debug['composition']['slots_hub'] ?? 0 ),
 				'available'      => count( $best ),
-			];
+			] );
 		}
 
 		$taken = array_column( $picked, 'post_id' );
@@ -520,6 +574,42 @@ class MFY_Scorer {
 
 		if ( $reserved > 0 ) {
 			$debug['composition']['slots_elsewhere'] = count( $picked ) - count( $taken );
+		}
+
+		return $picked;
+	}
+
+	/**
+	 * The hubs that get a slot, ahead of everything else.
+	 *
+	 * They are not ranked against candidates and no minimum score applies: a
+	 * hub earns its place by being the page an editor said owns what this
+	 * visitor has been reading. Already-read hubs never reach here — they are
+	 * excluded upstream, and surfaced under "recently viewed" instead.
+	 */
+	private static function place_hubs( array $hubs, int $limit, array &$debug ): array {
+		$max    = min( MFY_Config::max_hub_recommendations(), $limit );
+		$picked = [];
+
+		foreach ( $hubs as $hub ) {
+			if ( count( $picked ) >= $max ) {
+				break;
+			}
+
+			$picked[] = [
+				'post_id'   => $hub['post_id'],
+				'score'     => MFY_Hubs::score( $hub ),
+				'views'     => 0,
+				'signature' => [],
+				'places'    => [],
+				'affinity'  => null,
+				'hub_type'  => $hub['type'],
+			];
+		}
+
+		if ( $picked ) {
+			$debug['composition']['slots_hub'] = count( $picked );
+			$debug['composition']['hubs']      = array_column( $picked, 'post_id' );
 		}
 
 		return $picked;
@@ -630,6 +720,28 @@ class MFY_Scorer {
 			'levels'    => $levels,
 			'focus'     => $focus,
 		];
+	}
+
+	/** The session's hubs, in names rather than IDs. */
+	private static function describe_hubs( array $hubs, string $lang ): array {
+		if ( ! MFY_Hubs::available() ) {
+			return [ 'available' => false, 'found' => [] ];
+		}
+
+		$found = [];
+		foreach ( $hubs as $hub ) {
+			$found[] = sprintf(
+				'%s — %s (%s, weight %.2f, from %d viewed article%s)',
+				get_the_title( $hub['post_id'] ),
+				MFY_Hubs::label( $hub['type'], $lang ),
+				$hub['type'],
+				$hub['weight'],
+				count( $hub['sources'] ),
+				count( $hub['sources'] ) === 1 ? '' : 's'
+			);
+		}
+
+		return [ 'available' => true, 'found' => $found ];
 	}
 
 	/** A candidate's most specific known place, for the debug table. */

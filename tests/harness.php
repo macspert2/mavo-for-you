@@ -9,6 +9,8 @@ $GLOBALS['MOCK_POSTS'] = [];   // id => ['title'=>, 'lang'=>, 'status'=>, 'type'
 $GLOBALS['MOCK_WEIGHTS'] = []; // id => ['lang'=>, 'slugs'=>[slug=>w]]
 $GLOBALS['MOCK_PLACES'] = [];      // place_id => ['level'=>, 'name'=>, 'parent_id'=>]
 $GLOBALS['MOCK_POST_PLACES'] = []; // post_id  => [level => place_id]
+$GLOBALS['MOCK_HUB_TYPE'] = [];    // post_id  => 'geo'|'theme'
+$GLOBALS['MOCK_PRIMARY_HUB'] = []; // post_id  => [type => hub post_id]
 
 function apply_filters( $tag, $value ) { return $value; }
 function absint( $v ) { return abs( (int) $v ); }
@@ -34,6 +36,78 @@ function get_post( $id ) {
 function pll_get_post_language( $id, $field = 'slug' ) { return $GLOBALS['MOCK_POSTS'][ (int) $id ]['lang'] ?? ''; }
 
 class WP_Post { public $ID; public $post_status; public $post_type; }
+
+/**
+ * Hub Manager stand-in. Mirrors the real helpers, including the documented
+ * behaviour that get_primary_hub() returns raw, possibly stale meta while
+ * get_hub_ancestors() validates each hop.
+ *
+ * Defining MFY_TEST_WITHOUT_HUBS before loading the harness leaves them
+ * undefined, which is how the plugin sees a site with no Hub Manager at all.
+ */
+if ( ! defined( 'MFY_TEST_WITHOUT_HUBS' ) ) {
+
+function mavo_get_hub_type( int $post_id ): ?string {
+	return $GLOBALS['MOCK_HUB_TYPE'][ $post_id ] ?? null;
+}
+
+function mavo_get_primary_hub( int $post_id, string $type ): ?int {
+	return $GLOBALS['MOCK_PRIMARY_HUB'][ $post_id ][ $type ] ?? null;
+}
+
+function mavo_get_hub_ancestors( int $post_id, string $type ): array {
+	$ancestors = [];
+	$seen      = [ $post_id => true ];
+	$current   = $post_id;
+
+	for ( $depth = 0; $depth < 20; $depth++ ) {
+		$parent = mavo_get_primary_hub( $current, $type );
+
+		if ( null === $parent || isset( $seen[ $parent ] ) ) { break; }
+		if ( ! isset( $GLOBALS['MOCK_POSTS'][ $parent ] ) ) { break; }
+		if ( mavo_get_hub_type( $parent ) !== $type ) { break; }
+
+		$ancestors[]   = $parent;
+		$seen[ $parent ] = true;
+		$current       = $parent;
+	}
+
+	return $ancestors;
+}
+
+/**
+ * Derives children the way the real helper does — from each child's own meta,
+ * never from a list stored on the hub.
+ */
+function mavo_get_hub_children( int $hub_id, string $type, array $args = [] ): array {
+	$status = $args['post_status'] ?? 'any';
+	$limit  = (int) ( $args['posts_per_page'] ?? -1 );
+	$out    = [];
+
+	foreach ( $GLOBALS['MOCK_PRIMARY_HUB'] as $child_id => $types ) {
+		if ( (int) ( $types[ $type ] ?? 0 ) !== $hub_id ) { continue; }
+		$post = $GLOBALS['MOCK_POSTS'][ $child_id ] ?? null;
+		if ( ! $post ) { continue; }
+		if ( 'any' !== $status && $post['status'] !== $status ) { continue; }
+		$out[] = (int) $child_id;
+	}
+
+	sort( $out );
+
+	return $limit > 0 ? array_slice( $out, 0, $limit ) : $out;
+}
+
+} // MFY_TEST_WITHOUT_HUBS
+
+/** Marks a post as a hub of the given type. */
+function mock_hub( int $post_id, string $type ): void {
+	$GLOBALS['MOCK_HUB_TYPE'][ $post_id ] = $type;
+}
+
+/** Points a child at its primary hub of one type. */
+function mock_primary_hub( int $child_id, int $hub_id, string $type ): void {
+	$GLOBALS['MOCK_PRIMARY_HUB'][ $child_id ][ $type ] = $hub_id;
+}
 
 /** tvf registry + store stubs. */
 function tvf_get_registry(): array {
@@ -194,6 +268,7 @@ $GLOBALS['wpdb'] = new Fake_WPDB();
 require __DIR__ . '/../includes/mavo-for-you-config.php';
 require __DIR__ . '/../includes/class-mavo-for-you-data.php';
 require __DIR__ . '/../includes/class-mavo-for-you-geo.php';
+require __DIR__ . '/../includes/class-mavo-for-you-hubs.php';
 require __DIR__ . '/../includes/class-mavo-for-you-scorer.php';
 
 /**

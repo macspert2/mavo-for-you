@@ -179,6 +179,88 @@ class MFY_Config {
 	}
 
 	// -------------------------------------------------------------------------
+	// Editorial hubs
+	// -------------------------------------------------------------------------
+
+	/**
+	 * How many of the slots may be given to hubs.
+	 *
+	 * One. A hub is the single most useful link for someone mid-topic, but two
+	 * of three slots pointing at overview pages would turn a recommendation
+	 * block into a table of contents. Raise it only if the block grows.
+	 */
+	public static function max_hub_recommendations(): int {
+		return (int) apply_filters( 'mavo_for_you_max_hub_recommendations', 1 );
+	}
+
+	/**
+	 * How far up the hub chain to look.
+	 *
+	 * 2: the immediate hub, and its parent. Someone reading Paris articles is
+	 * signalling Paris loudly and France faintly; beyond that the relationship
+	 * is too abstract to act on.
+	 */
+	public static function hub_max_depth(): int {
+		return (int) apply_filters( 'mavo_for_you_hub_max_depth', 2 );
+	}
+
+	/** Weight retained per step up the hub chain. */
+	public static function hub_ancestor_decay(): float {
+		return (float) apply_filters( 'mavo_for_you_hub_ancestor_decay', 0.5 );
+	}
+
+	/**
+	 * Points an article earns for being a child of a hub the session is
+	 * reading in, per unit of that hub's weight.
+	 *
+	 * At 10, a child of the hub on the current page clears the minimum score
+	 * (7.5) on that relationship alone — which is the point: an editor put it
+	 * there by hand. Filter and geography overlap then add to it.
+	 */
+	public static function hub_child_points(): float {
+		return (float) apply_filters( 'mavo_for_you_hub_child_points', 10.0 );
+	}
+
+	/** How many of the session's hubs are expanded into their children. */
+	public static function hub_child_hubs(): int {
+		return (int) apply_filters( 'mavo_for_you_hub_child_hubs', 3 );
+	}
+
+	/** Children fetched per expanded hub. */
+	public static function hub_child_pool_size(): int {
+		return (int) apply_filters( 'mavo_for_you_hub_child_pool_size', 20 );
+	}
+
+	/** Points per unit of hub weight — reporting only; see MFY_Hubs::score(). */
+	public static function hub_points(): float {
+		return (float) apply_filters( 'mavo_for_you_hub_points', 20.0 );
+	}
+
+	/**
+	 * The reader-facing word for a hub, per language and hub type.
+	 *
+	 * Deliberately not "hub" in any language — that is the internal name for
+	 * the relationship. French editorial usage would call a place page a
+	 * *guide* and a topic page a *dossier*; German travel writing has taken
+	 * "Guide" as a loanword but *Übersicht* is the plainer word. Both types
+	 * default to the same label so the block does not teach a vocabulary;
+	 * split them here if that ever becomes useful.
+	 */
+	public static function hub_labels( string $lang ): array {
+		$labels = [
+			'fr' => [ 'geo' => __( 'Guide', 'mavo-for-you' ),      'theme' => __( 'Guide', 'mavo-for-you' ) ],
+			'en' => [ 'geo' => __( 'Guide', 'mavo-for-you' ),      'theme' => __( 'Guide', 'mavo-for-you' ) ],
+			'de' => [ 'geo' => __( 'Übersicht', 'mavo-for-you' ),  'theme' => __( 'Übersicht', 'mavo-for-you' ) ],
+		];
+
+		return (array) apply_filters(
+			'mavo_for_you_hub_labels',
+			$labels[ $lang ] ?? $labels['en'],
+			$lang
+		);
+	}
+
+	// -------------------------------------------------------------------------
 	// Geography
 	// -------------------------------------------------------------------------
 

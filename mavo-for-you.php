@@ -3,7 +3,7 @@
  * Plugin Name: Mavo For You
  * Plugin URI:  https://mamanvoyage.com
  * Description: Session-only, privacy-conscious content personalization. Adds a "Pour vous" block after the content of eligible posts, loaded after page load so full-page caching stays intact.
- * Version:     0.2.0
+ * Version:     0.4.0
  * Author:      Mavo
  * Text Domain: mavo-for-you
  * Requires at least: 6.3
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MFY_VERSION',    '0.2.0' );
+define( 'MFY_VERSION',    '0.4.0' );
 define( 'MFY_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MFY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MFY_PLUGIN_FILE', __FILE__ );
@@ -20,6 +20,7 @@ define( 'MFY_PLUGIN_FILE', __FILE__ );
 require_once MFY_PLUGIN_DIR . 'includes/mavo-for-you-config.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-data.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-geo.php';
+require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-hubs.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-scorer.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-rest.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-render.php';

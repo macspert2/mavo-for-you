@@ -479,6 +479,15 @@
 		}
 
 		var body = el('span', 'mv-tile__body');
+
+		// The site's own eyebrow, not a new badge: a hub is editorial context
+		// ("Guide"), not a status chip, and .mv-tile__eyebrow already says
+		// exactly that in the theme's own voice.
+		if (item.hub && item.hub.label) {
+			body.appendChild(el('span', 'mv-tile__eyebrow mfy__hub-label', item.hub.label));
+			tile.className += ' mfy__card--hub';
+		}
+
 		var title = el('span', 'mv-tile__title');
 		var link = el('a', 'mv-tile__link', item.title);
 
@@ -533,6 +542,14 @@
 				link.href = item.url;
 				link.setAttribute('data-mavo-post-id', item.post_id);
 				li.appendChild(link);
+
+				// Marks the way back to the overview page the visitor came
+				// through, without promoting it above the articles.
+				if (item.hub && item.hub.label) {
+					li.className += ' mfy__recent-item--hub';
+					li.appendChild(el('span', 'mfy__recent-hub', item.hub.label));
+				}
+
 				list.appendChild(li);
 			});
 

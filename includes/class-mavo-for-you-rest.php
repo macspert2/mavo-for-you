@@ -78,7 +78,7 @@ class MFY_Rest {
 			'show'            => ! empty( $ranked['recommendations'] ),
 			'lang'            => $lang,
 			'recommendations' => $ranked['recommendations'],
-			'recently_viewed' => self::recently_viewed( $views, $current_post_id ),
+			'recently_viewed' => self::recently_viewed( $views, $current_post_id, $lang ),
 		];
 
 		if ( $debug_mode ) {
@@ -210,25 +210,59 @@ class MFY_Rest {
 	// Output
 	// -------------------------------------------------------------------------
 
-	/** Most recent first, current page excluded, already language-filtered. */
-	private static function recently_viewed( array $views, int $current_post_id ): array {
+	/**
+	 * Most recent first, current page excluded, already language-filtered.
+	 *
+	 * With one deliberate exception: a hub that has been read this visit is
+	 * guaranteed a place in the list even when three newer articles have
+	 * pushed it out. An already-read hub is never re-recommended — it is not
+	 * news — but it is the page a reader is most likely to want to get back
+	 * to, and dropping it off the bottom of a strict recency list makes that
+	 * return harder than it needs to be.
+	 */
+	private static function recently_viewed( array $views, int $current_post_id, string $lang ): array {
 		usort( $views, static fn( $a, $b ) => $b['last_seen'] <=> $a['last_seen'] );
 
-		$out   = [];
-		$limit = MFY_Config::num_recently_viewed();
+		$limit     = MFY_Config::num_recently_viewed();
+		$eligible  = [];
+		$first_hub = null;
 
 		foreach ( $views as $view ) {
-			if ( count( $out ) >= $limit ) {
-				break;
-			}
 			if ( $view['post_id'] === $current_post_id ) {
 				continue;
 			}
 
-			$item = MFY_Data::format_item( $view['post_id'], false );
-			if ( $item ) {
-				$out[] = $item;
+			$eligible[] = $view['post_id'];
+
+			if ( null === $first_hub && MFY_Hubs::is_hub( $view['post_id'] ) ) {
+				$first_hub = $view['post_id'];
 			}
+		}
+
+		$shown = array_slice( $eligible, 0, $limit );
+
+		// The hub exists, was read, and recency alone would have hidden it:
+		// it takes the last slot rather than being lost.
+		if ( $first_hub && $shown && ! in_array( $first_hub, $shown, true ) ) {
+			array_splice( $shown, $limit - 1, 1, [ $first_hub ] );
+		}
+
+		$out = [];
+		foreach ( $shown as $post_id ) {
+			$item = MFY_Data::format_item( $post_id, false );
+			if ( ! $item ) {
+				continue;
+			}
+
+			$hub_type = MFY_Hubs::hub_type( $post_id );
+			if ( $hub_type ) {
+				$item['hub'] = [
+					'type'  => $hub_type,
+					'label' => MFY_Hubs::label( $hub_type, $lang ),
+				];
+			}
+
+			$out[] = $item;
 		}
 
 		return $out;

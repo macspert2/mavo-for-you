@@ -321,6 +321,36 @@ async function main() {
 	check('window.mavoForYouReset() is equally final', api.profile() === null, JSON.stringify(api.store));
 }
 
+// 10b. A hub suggestion is labelled with the site's own eyebrow, not a new badge.
+{
+	const env = makeEnvironment({
+		storage: seededProfile(NOW),
+		responder: () => ({
+			show: true,
+			lang: 'fr',
+			recommendations: [
+				{ post_id: 50, title: 'Londres en famille', url: 'https://x.test/50/', image: '', excerpt: 'x', hub: { type: 'geo', label: 'Guide' } },
+				{ post_id: 4, title: 'Kew Gardens', url: 'https://x.test/4/', image: '', excerpt: 'x' },
+			],
+			recently_viewed: [
+				{ post_id: 7, title: 'Bath', url: 'https://x.test/7/', image: '' },
+				{ post_id: 51, title: 'Angleterre', url: 'https://x.test/51/', image: '', hub: { type: 'geo', label: 'Guide' } },
+			],
+		}),
+	});
+	env.advance(10);
+	env.tick();
+	await flush();
+
+	const eyebrow = env.host.find('mv-tile__eyebrow');
+	check('a hub card carries the theme eyebrow', !!eyebrow && eyebrow.textContent === 'Guide', eyebrow && eyebrow.textContent);
+	check('the hub card is marked for styling', !!env.host.find('mfy__card--hub'));
+	check('a non-hub card gets no label', env.host.find('mfy') && !env.host.find('mfy__card--hub').children.some((c) => c.className === ''));
+	const recentHub = env.host.find('mfy__recent-hub');
+	check('a hub in recently viewed is marked', !!recentHub && recentHub.textContent === 'Guide', recentHub && recentHub.textContent);
+	check('recently-viewed hub keeps a normal crawlable link', !!env.host.find('mfy__recent-link'));
+}
+
 // 11. A failed request leaves the page alone.
 {
 	const env = makeEnvironment({ storage: seededProfile(NOW), responder: () => null });

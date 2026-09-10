@@ -74,6 +74,18 @@
 	gap: 1.1rem;
 }
 
+/*
+ * Hub cards.
+ *
+ * The eyebrow comes from mv-tiles.css (warm brown, small, bold) — reused
+ * rather than reinvented. All this adds is a hairline of emphasis, because the
+ * hub is the one card in the block that answers "where does all of this live?".
+ */
+.mfy__card--hub {
+	box-shadow: var(--mv-tile-shadow, 0 8px 22px rgba(58, 58, 58, 0.08)),
+		inset 3px 0 0 var(--mv-color-warm, #886353);
+}
+
 /* ----- Recently viewed ---------------------------------------------------- */
 
 /*
@@ -129,6 +141,16 @@
 .mfy__recent-link:focus-visible {
 	color: var(--mv-color-primary, #4e74a5);
 	border-bottom-color: currentColor;
+}
+
+/* Quiet enough not to compete with the recommendations above it. */
+.mfy__recent-hub {
+	margin-left: 0.4em;
+	font-size: 0.78em;
+	font-weight: 700;
+	letter-spacing: 0.01em;
+	color: var(--mv-color-warm, #886353);
+	white-space: nowrap;
 }
 
 @media (max-width: 480px) {

@@ -141,6 +141,16 @@ class MFY_Admin {
 					</td>
 				</tr>
 				<tr>
+					<td><?php esc_html_e( 'Hub Manager relationships', 'mavo-for-you' ); ?></td>
+					<td>
+						<?php
+						echo MFY_Hubs::available()
+							? esc_html__( 'available — an owning hub is offered as the first suggestion', 'mavo-for-you' )
+							: esc_html__( 'unavailable — suggestions are made without hub awareness', 'mavo-for-you' );
+						?>
+					</td>
+				</tr>
+				<tr>
 					<td><?php esc_html_e( 'Signal filters', 'mavo-for-you' ); ?></td>
 					<td><?php echo esc_html( implode( ', ', array_keys( MFY_Data::signal_labels() ) ) ?: '—' ); ?></td>
 				</tr>
