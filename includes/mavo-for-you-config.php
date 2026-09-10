@@ -178,6 +178,77 @@ class MFY_Config {
 		return (float) apply_filters( 'mavo_for_you_referral_search_factor', 0.5 );
 	}
 
+	// -------------------------------------------------------------------------
+	// Geography
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Place levels that take part in matching, most specific first.
+	 *
+	 * Continent is deliberately absent: "same continent" is true of most of
+	 * the catalogue and would be a signal of nothing.
+	 */
+	public static function geo_levels(): array {
+		return (array) apply_filters( 'mavo_for_you_geo_levels', [ 'city', 'region', 'country' ] );
+	}
+
+	/**
+	 * Points a candidate earns for sitting in a place the session has been
+	 * reading about, multiplied by that place's accumulated session weight.
+	 * Only the deepest matching level is awarded.
+	 *
+	 * Sized against the filter scoring on purpose: one shared strong filter is
+	 * 8 points, so a same-city match is worth roughly a filter and a half. It
+	 * shifts the ranking without being able to drag in an editorially
+	 * irrelevant post on geography alone.
+	 */
+	public static function geo_points(): array {
+		return (array) apply_filters( 'mavo_for_you_geo_points', [
+			'city'    => 12.0,
+			'region'  => 6.0,
+			'country' => 3.0,
+		] );
+	}
+
+	/**
+	 * Share of a level's session weight one place must hold for the session to
+	 * count as focused there.
+	 *
+	 * At 0.6, three London articles are a London session, and so are two
+	 * London plus one Barcelona (0.67) — one stray click does not undo the
+	 * reader's evident intent. An even three-city split (0.33) is not focused
+	 * at any level, and filter scores decide, which is the old behaviour.
+	 */
+	public static function geo_focus_threshold(): float {
+		return (float) apply_filters( 'mavo_for_you_geo_focus_threshold', 0.6 );
+	}
+
+	/**
+	 * Share of the recommendation slots reserved for the focused place.
+	 *
+	 * 2 of 3. The remaining slot deliberately goes elsewhere: someone who has
+	 * read three London articles wants more London, but not *only* London.
+	 */
+	public static function geo_reserved_ratio(): float {
+		return (float) apply_filters( 'mavo_for_you_geo_reserved_ratio', 2 / 3 );
+	}
+
+	/** Slots reserved for the focused place, given a total. */
+	public static function geo_reserved_slots( int $total ): int {
+		$reserved = (int) floor( $total * self::geo_reserved_ratio() );
+
+		return (int) apply_filters(
+			'mavo_for_you_geo_reserved_slots',
+			max( 0, min( $total, $reserved ) ),
+			$total
+		);
+	}
+
+	/** How many geography-matched posts may join the candidate pool. */
+	public static function geo_pool_size(): int {
+		return (int) apply_filters( 'mavo_for_you_geo_pool_size', 40 );
+	}
+
 	/** How many candidates the SQL pool may return before PHP scoring. */
 	public static function candidate_pool_size(): int {
 		return (int) apply_filters( 'mavo_for_you_candidate_pool_size', 60 );
@@ -302,16 +373,25 @@ class MFY_Config {
 				'heading'  => __( 'Pour vous', 'mavo-for-you' ),
 				'subtitle' => __( 'Suggestions basées sur les articles consultés pendant votre visite sur Maman Voyage.', 'mavo-for-you' ),
 				'recent'   => __( 'Consultés récemment', 'mavo-for-you' ),
+				'reset'    => __( 'Effacer mon historique', 'mavo-for-you' ),
+				'resetHint' => __( 'Efface les articles consultés enregistrés dans votre navigateur.', 'mavo-for-you' ),
+				'resetDone' => __( 'Historique effacé. Les suggestions repartiront de zéro.', 'mavo-for-you' ),
 			],
 			'en' => [
 				'heading'  => __( 'For you', 'mavo-for-you' ),
 				'subtitle' => __( "Suggestions based on the articles you've viewed during this visit to Maman Voyage.", 'mavo-for-you' ),
 				'recent'   => __( 'Recently viewed', 'mavo-for-you' ),
+				'reset'    => __( 'Clear my history', 'mavo-for-you' ),
+				'resetHint' => __( 'Clears the viewed articles stored in your browser.', 'mavo-for-you' ),
+				'resetDone' => __( 'History cleared. Suggestions will start over.', 'mavo-for-you' ),
 			],
 			'de' => [
 				'heading'  => __( 'Für Euch', 'mavo-for-you' ),
 				'subtitle' => __( 'Vorschläge auf Basis der Artikel, die Ihr während dieses Besuchs auf Maman Voyage angesehen habt.', 'mavo-for-you' ),
 				'recent'   => __( 'Kürzlich angesehen', 'mavo-for-you' ),
+				'reset'    => __( 'Verlauf löschen', 'mavo-for-you' ),
+				'resetHint' => __( 'Löscht die in Eurem Browser gespeicherten angesehenen Artikel.', 'mavo-for-you' ),
+				'resetDone' => __( 'Verlauf gelöscht. Die Vorschläge beginnen von vorn.', 'mavo-for-you' ),
 			],
 		];
 

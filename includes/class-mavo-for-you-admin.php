@@ -131,6 +131,16 @@ class MFY_Admin {
 					</td>
 				</tr>
 				<tr>
+					<td><?php esc_html_e( 'Geo Tagger place data', 'mavo-for-you' ); ?></td>
+					<td>
+						<?php
+						echo MFY_Geo::available()
+							? esc_html__( 'available — suggestions favour the place the visitor is reading about', 'mavo-for-you' )
+							: esc_html__( 'unavailable — suggestions fall back to filter scores alone', 'mavo-for-you' );
+						?>
+					</td>
+				</tr>
+				<tr>
 					<td><?php esc_html_e( 'Signal filters', 'mavo-for-you' ); ?></td>
 					<td><?php echo esc_html( implode( ', ', array_keys( MFY_Data::signal_labels() ) ) ?: '—' ); ?></td>
 				</tr>

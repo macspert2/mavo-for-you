@@ -7,6 +7,8 @@ define( 'ARRAY_A', 'ARRAY_A' );
 
 $GLOBALS['MOCK_POSTS'] = [];   // id => ['title'=>, 'lang'=>, 'status'=>, 'type'=>]
 $GLOBALS['MOCK_WEIGHTS'] = []; // id => ['lang'=>, 'slugs'=>[slug=>w]]
+$GLOBALS['MOCK_PLACES'] = [];      // place_id => ['level'=>, 'name'=>, 'parent_id'=>]
+$GLOBALS['MOCK_POST_PLACES'] = []; // post_id  => [level => place_id]
 
 function apply_filters( $tag, $value ) { return $value; }
 function absint( $v ) { return abs( (int) $v ); }
@@ -60,6 +62,9 @@ class TVF_Store {
 class Fake_WPDB {
 	public $posts = 'wp_posts';
 	public $postmeta = 'wp_postmeta';
+	public $prefix = 'wp_';
+	public $term_relationships = 'wp_term_relationships';
+	public $term_taxonomy = 'wp_term_taxonomy';
 	public $last_sql = '';
 	public function prepare( $sql, ...$args ) {
 		if ( isset( $args[0] ) && is_array( $args[0] ) ) { $args = $args[0]; }
@@ -71,8 +76,79 @@ class Fake_WPDB {
 	}
 	public function get_results( $sql, $mode = null ) {
 		$this->last_sql = $sql;
+		if ( str_contains( $sql, 'gp.level' ) )       { return $this->post_places( $sql ); }
+		if ( str_contains( $sql, 'AS name' ) )        { return $this->place_names( $sql ); }
+		if ( str_contains( $sql, 'pf.post_id IN' ) )  { return $this->eligible( $sql ); }
 		if ( str_contains( $sql, 'COUNT(*) AS hits' ) ) { return $this->candidates( $sql ); }
 		return $this->weights( $sql );
+	}
+
+	public function get_col( $sql ) {
+		$this->last_sql = $sql;
+		// MFY_Geo::candidate_ids()
+		$places  = array_map( 'intval', $this->extract_list( $sql, 'gp.id IN' ) );
+		$exclude = array_map( 'intval', $this->extract_list( $sql, 'p.ID NOT IN' ) );
+		$out     = [];
+		foreach ( $GLOBALS['MOCK_POST_PLACES'] as $post_id => $levels ) {
+			if ( in_array( $post_id, $exclude, true ) ) { continue; }
+			$post = $GLOBALS['MOCK_POSTS'][ $post_id ] ?? null;
+			if ( ! $post || $post['status'] !== 'publish' || $post['type'] !== 'post' ) { continue; }
+			if ( array_intersect( array_map( 'intval', array_values( $levels ) ), $places ) ) { $out[] = $post_id; }
+		}
+		return $out;
+	}
+
+	public function get_var( $sql ) {
+		$this->last_sql = $sql;
+		if ( str_contains( $sql, 'SHOW TABLES LIKE' ) ) {
+			return empty( $GLOBALS['MOCK_PLACES'] ) ? null : 'wp_geo_tagger_places';
+		}
+		return null;
+	}
+
+	public function esc_like( $s ) { return $s; }
+
+	private function post_places( string $sql ): array {
+		$ids    = array_map( 'intval', $this->extract_list( $sql, 'tr.object_id IN' ) );
+		$levels = $this->extract_list( $sql, 'gp.level IN' );
+		$out    = [];
+		foreach ( $ids as $id ) {
+			foreach ( $GLOBALS['MOCK_POST_PLACES'][ $id ] ?? [] as $level => $place_id ) {
+				if ( in_array( $level, $levels, true ) ) {
+					$out[] = [ 'post_id' => $id, 'place_id' => $place_id, 'level' => $level ];
+				}
+			}
+		}
+		return $out;
+	}
+
+	private function place_names( string $sql ): array {
+		$ids = array_map( 'intval', $this->extract_list( $sql, 'id IN' ) );
+		$out = [];
+		foreach ( $ids as $id ) {
+			if ( isset( $GLOBALS['MOCK_PLACES'][ $id ] ) ) {
+				$out[] = [ 'id' => $id, 'name' => $GLOBALS['MOCK_PLACES'][ $id ]['name'] ];
+			}
+		}
+		return $out;
+	}
+
+	/** MFY_Data::filter_eligible() — same rows as candidates(), restricted to an ID list. */
+	private function eligible( string $sql ): array {
+		$ids   = array_map( 'intval', $this->extract_list( $sql, 'pf.post_id IN' ) );
+		$slugs = $this->extract_list( $sql, 'filter_slug IN' );
+		$lang  = $this->lang( $sql );
+		$out   = [];
+		foreach ( $ids as $id ) {
+			$post = $GLOBALS['MOCK_POSTS'][ $id ] ?? null;
+			if ( ! $post || $post['status'] !== 'publish' || $post['type'] !== 'post' ) { continue; }
+			$hits = 0;
+			foreach ( TVF_Store::get_weights( $id, $lang ) as $slug => $w ) {
+				if ( 2 === (int) $w && in_array( $slug, $slugs, true ) ) { $hits++; }
+			}
+			if ( $hits ) { $out[] = [ 'post_id' => $id, 'hits' => $hits, 'views' => 0 ]; }
+		}
+		return $out;
 	}
 	private function extract_list( string $sql, string $after ): array {
 		if ( ! preg_match( '/' . preg_quote( $after, '/' ) . '\s*\(([^)]*)\)/', $sql, $m ) ) { return []; }
@@ -117,7 +193,22 @@ $GLOBALS['wpdb'] = new Fake_WPDB();
 
 require __DIR__ . '/../includes/mavo-for-you-config.php';
 require __DIR__ . '/../includes/class-mavo-for-you-data.php';
+require __DIR__ . '/../includes/class-mavo-for-you-geo.php';
 require __DIR__ . '/../includes/class-mavo-for-you-scorer.php';
+
+/**
+ * Geo Tagger stand-in: places keyed by id, and a post -> place-chain map.
+ * Mirrors the real model closely enough for the composition rules — every
+ * level of a post's chain is attached to it, exactly as TagManager does.
+ */
+function mock_place( int $id, string $level, string $name, ?int $parent_id = null ): void {
+	$GLOBALS['MOCK_PLACES'][ $id ] = [ 'level' => $level, 'name' => $name, 'parent_id' => $parent_id ];
+}
+
+/** @param array $levels [ 'city' => place_id, 'region' => .., 'country' => .. ] */
+function mock_geo( int $post_id, array $levels ): void {
+	$GLOBALS['MOCK_POST_PLACES'][ $post_id ] = $levels;
+}
 
 function mock_post( int $id, string $title, string $lang, array $weights, string $status = 'publish', string $type = 'post' ): void {
 	$GLOBALS['MOCK_POSTS'][ $id ]   = [ 'title' => $title, 'lang' => $lang, 'status' => $status, 'type' => $type ];

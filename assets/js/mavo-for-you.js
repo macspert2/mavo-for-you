@@ -126,10 +126,37 @@
 		}
 	}
 
-	window.mavoForYouReset = function () {
+	/** Set once boot() starts tracking, so a reset can silence them. */
+	var activeTracker = null;
+	var pollHandle = null;
+
+	/**
+	 * Forget this visit.
+	 *
+	 * Clearing the key is not enough on its own: the tracker holds the whole
+	 * profile in memory and would write it back within seconds, quietly undoing
+	 * the reset. So it is stopped first, and tracking does not resume for the
+	 * rest of this page view — a reset the visitor has to ask for twice is not
+	 * a reset. The next page load starts a fresh, empty profile.
+	 */
+	function resetProfile() {
+		if (activeTracker) {
+			activeTracker.stop();
+			activeTracker = null;
+		}
+
+		if (pollHandle) {
+			window.clearInterval(pollHandle);
+			pollHandle = null;
+		}
+
 		try {
 			window.localStorage.removeItem(cfg.storageKey);
 		} catch (e) {}
+	}
+
+	window.mavoForYouReset = function () {
+		resetProfile();
 
 		var host = document.getElementById('mavo-for-you');
 		if (host) {
@@ -227,6 +254,7 @@
 		this.maxScroll = 0;
 		this.lastTick = document.visibilityState === 'visible' ? Date.now() : null;
 		this.scrollQueued = false;
+		this.stopped = false;
 	}
 
 	ViewTracker.prototype.start = function () {
@@ -328,7 +356,17 @@
 		return Math.min(cfg.maxDuration, Math.round(this.visibleMs / 1000));
 	};
 
+	/** After a reset there is nothing left to record, and nothing to record into. */
+	ViewTracker.prototype.stop = function () {
+		this.stopped = true;
+		window.clearInterval(this.interval);
+	};
+
 	ViewTracker.prototype.persist = function () {
+		if (this.stopped) {
+			return;
+		}
+
 		this.entry.last_seen = now();
 		this.entry.duration_seconds = Math.max(this.baseDuration, this.sessionSeconds());
 		this.entry.max_scroll_pct = Math.max(this.baseScroll, this.maxScroll);
@@ -502,12 +540,47 @@
 			section.appendChild(recent);
 		}
 
+		section.appendChild(resetControl(host));
+
 		host.innerHTML = '';
 		host.appendChild(section);
 
 		window.requestAnimationFrame(function () {
 			section.classList.add('is-visible');
 		});
+	}
+
+	/**
+	 * The way out: a quiet text button, last thing in the block.
+	 *
+	 * Deliberately understated — this is a courtesy, not a warning. There is no
+	 * confirmation dialog because there is nothing to lose (a few post IDs in
+	 * this browser) and because a modal would block the extension-free page
+	 * anyway; the block simply becomes a one-line acknowledgement.
+	 */
+	function resetControl(host) {
+		var footer = el('div', 'mfy__footer');
+		var button = el('button', 'mfy__reset', cfg.labels.reset || 'Reset');
+
+		button.type = 'button';
+
+		if (cfg.labels.resetHint) {
+			button.title = cfg.labels.resetHint;
+		}
+
+		button.addEventListener('click', function () {
+			resetProfile();
+
+			var note = el('p', 'mfy__note', cfg.labels.resetDone || '');
+			note.setAttribute('role', 'status');
+
+			host.innerHTML = '';
+			host.appendChild(note);
+		});
+
+		footer.appendChild(button);
+
+		return footer;
 	}
 
 	/** Administrator-only scoring explanation, printed under the block. */
@@ -559,6 +632,7 @@
 
 		var tracker = new ViewTracker(profile, cfg.postId);
 		tracker.start(); // Also persists, so `dirty` is covered.
+		activeTracker = tracker;
 
 		var host = document.getElementById('mavo-for-you');
 		if (!host || !cfg.showBlock) {
@@ -574,6 +648,7 @@
 			}
 			requested = true;
 			window.clearInterval(check);
+			pollHandle = null;
 			request(profile, host);
 		}
 
@@ -587,8 +662,11 @@
 
 			if (!requested && ++ticks >= 15) {
 				window.clearInterval(check);
+				pollHandle = null;
 			}
 		}, Math.max(2, Math.min(cfg.minDuration, 8)) * 1000);
+
+		pollHandle = check;
 
 		window.addEventListener('pagehide', function () {
 			window.clearInterval(check);

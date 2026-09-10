@@ -221,6 +221,74 @@ class MFY_Data {
 	}
 
 	/**
+	 * Editorial eligibility for an already-chosen set of post IDs.
+	 *
+	 * The geography pool arrives as bare IDs (MFY_Geo knows nothing about
+	 * filter scores), and §10's rule still applies to every candidate however
+	 * it was found: at least one "où partir" filter scored 2. This applies it,
+	 * and returns the same row shape as get_candidates() so the two pools can
+	 * simply be merged.
+	 *
+	 * @param int[] $post_ids
+	 * @param int[] $exclude_ids
+	 * @return array<int, array{post_id:int, hits:int, views:int}>
+	 */
+	public static function filter_eligible( string $lang, array $post_ids, array $exclude_ids = [] ): array {
+		$post_ids = array_values( array_diff(
+			array_unique( array_filter( array_map( 'absint', $post_ids ) ) ),
+			array_map( 'absint', $exclude_ids )
+		) );
+		$slugs    = self::signal_slugs();
+
+		if ( ! $post_ids || ! $slugs || ! self::integration_available() ) {
+			return [];
+		}
+
+		global $wpdb;
+		$table      = TVF_Store::table_name();
+		$post_types = MFY_Config::candidate_post_types();
+
+		$id_ph   = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+		$slug_ph = implode( ',', array_fill( 0, count( $slugs ), '%s' ) );
+		$type_ph = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
+		$args    = array_merge( $post_types, [ $lang ], $post_ids, $slugs );
+
+		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT pf.post_id,
+				        COUNT(*) AS hits,
+				        CAST( COALESCE( pm.meta_value, 0 ) AS UNSIGNED ) AS views
+				   FROM {$table} pf
+				   JOIN {$wpdb->posts} p
+				     ON p.ID = pf.post_id
+				    AND p.post_status = 'publish'
+				    AND p.post_type IN ({$type_ph})
+				   LEFT JOIN {$wpdb->postmeta} pm
+				     ON pm.post_id = pf.post_id AND pm.meta_key = 'views'
+				  WHERE pf.lang = %s
+				    AND pf.post_id IN ({$id_ph})
+				    AND pf.filter_slug IN ({$slug_ph})
+				    AND pf.weight = 2
+				  GROUP BY pf.post_id",
+				...$args
+			),
+			ARRAY_A
+		);
+
+		$out = [];
+		foreach ( $rows ?: [] as $row ) {
+			$out[] = [
+				'post_id' => (int) $row['post_id'],
+				'hits'    => (int) $row['hits'],
+				'views'   => (int) $row['views'],
+			];
+		}
+
+		return $out;
+	}
+
+	/**
 	 * A post's Polylang language slug, or '' when it cannot be determined.
 	 *
 	 * Callers treat '' as "do not use this post" — mixing languages is worse

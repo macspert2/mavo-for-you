@@ -145,6 +145,44 @@
 	}
 }
 
+/* ----- Reset control ------------------------------------------------------ */
+
+/*
+ * Quiet on purpose. It should be findable by someone looking for it and
+ * invisible to everyone else — a courtesy, not a call to action.
+ */
+.mfy__footer {
+	margin-top: 0.9em;
+	text-align: right;
+}
+
+.mfy__reset {
+	padding: 0;
+	border: 0;
+	background: none;
+	font: inherit;
+	font-size: 0.75em;
+	line-height: 1.4;
+	color: var(--mv-color-subtle, #757575);
+	text-decoration: none;
+	border-bottom: 1px solid transparent;
+	cursor: pointer;
+}
+
+.mfy__reset:hover,
+.mfy__reset:focus-visible {
+	color: var(--mv-color-primary, #4e74a5);
+	border-bottom-color: currentColor;
+}
+
+.mfy__note {
+	margin: 2.5em 0 0;
+	padding-top: 1.75em;
+	border-top: 1px solid var(--mv-color-divider, rgba(0, 0, 0, 0.08));
+	font-size: 0.82em;
+	color: var(--mv-color-subtle, #757575);
+}
+
 /* ----- Administrator debug ------------------------------------------------ */
 
 .mfy-debug {

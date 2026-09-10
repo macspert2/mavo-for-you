@@ -3,18 +3,30 @@
  * The ranking. Deterministic, explainable, no external anything.
  *
  * The shape of it: recently viewed posts each contribute their strongly scored
- * ("où partir" = 2) filters to a session interest map, weighted by how recent
- * the view was and how engaged the reading looked. Candidates are then scored
- * on how well their own filters overlap that map.
+ * ("où partir" = 2) filters to a session interest map, and their location to a
+ * session geography, both weighted by how recent the view was and how engaged
+ * the reading looked. Candidates are then scored on how well they overlap the
+ * two.
+ *
+ * Filter scores describe what *kind* of trip an article is about; geography
+ * describes *where*. A reader three articles deep into London is telling us
+ * both things, and the second one used to be invisible — which is how a
+ * Barcelona article that happened to share "city trip + teenagers" could
+ * outrank the next London article. Composition (see pick()) is what fixes
+ * that: when a session is clearly focused on one place, most of the slots are
+ * reserved for it, and only the leftover slot goes wandering.
  */
 
 defined( 'ABSPATH' ) || exit;
 
 class MFY_Scorer {
 
+	/** Per-request memo for the Polylang check in pick(). */
+	private static array $lang_cache = [];
+
 	/**
-	 * @param array  $views    Validated views, each [post_id, duration_seconds, max_scroll_pct, last_seen].
-	 * @param array  $searches Validated searches, each [query, source, timestamp].
+	 * @param array      $views    Validated views, each [post_id, duration_seconds, max_scroll_pct, last_seen].
+	 * @param array      $searches Validated searches, each [query, source, timestamp].
 	 * @param array|null $referral Validated referral, or null.
 	 * @return array{recommendations: array, debug: array}
 	 */
@@ -24,36 +36,44 @@ class MFY_Scorer {
 			'profile_views'   => [],
 			'profile_filters' => [],
 			'search_filters'  => [],
+			'geo'             => [],
 			'pool_size'       => 0,
 			'candidates'      => [],
+			'composition'     => [],
 			'excluded'        => [],
 		];
 
-		$ordered = self::order_views( $current_post_id, $views );
+		$ordered  = self::order_views( $current_post_id, $views );
+		$weighted = self::weigh_views( $ordered );
 
-		[ $interest, $view_debug ] = self::build_interest_profile( $ordered, $lang );
+		[ $interest, $view_debug ] = self::build_interest_profile( $weighted, $lang );
 		$debug['profile_views']    = $view_debug;
 		$debug['profile_filters']  = $interest;
 
 		$search_filters         = self::search_filters( $searches, $referral, $lang );
 		$debug['search_filters'] = $search_filters;
 
-		$pool_slugs = array_values( array_unique( array_merge( array_keys( $interest ), array_keys( $search_filters ) ) ) );
-
-		if ( ! $pool_slugs ) {
-			$debug['excluded'][] = 'no strong session filters — nothing to match on';
-			return [ 'recommendations' => [], 'debug' => $debug ];
-		}
+		$geo           = MFY_Geo::session_profile( $weighted, $lang );
+		$debug['geo']  = self::describe_geo( $geo );
 
 		$exclude    = array_merge( [ $current_post_id ], array_column( $ordered, 'post_id' ) );
-		$candidates = MFY_Data::get_candidates( $lang, $pool_slugs, $exclude, MFY_Config::candidate_pool_size() );
-		$debug['pool_size'] = count( $candidates );
+		$candidates = self::build_pool( $lang, $interest, $search_filters, $geo, $exclude, $debug );
 
 		if ( ! $candidates ) {
 			return [ 'recommendations' => [], 'debug' => $debug ];
 		}
 
-		$scores_by_post = MFY_Data::get_filter_scores_bulk( array_column( $candidates, 'post_id' ), $lang );
+		$candidate_ids  = array_column( $candidates, 'post_id' );
+		$scores_by_post = MFY_Data::get_filter_scores_bulk( $candidate_ids, $lang );
+		$places_by_post = MFY_Geo::places_for_posts( $candidate_ids, $lang );
+
+		// Candidates sit in places the session has never visited, so their
+		// names have to be resolved too before anything can be explained.
+		$candidate_places = [];
+		foreach ( $places_by_post as $map ) {
+			$candidate_places = array_merge( $candidate_places, array_values( $map ) );
+		}
+		$geo['places'] = ( $geo['places'] ?? [] ) + MFY_Geo::place_names( $candidate_places, $lang );
 		$min_score      = MFY_Config::min_score( [
 			'lang'            => $lang,
 			'current_post_id' => $current_post_id,
@@ -62,14 +82,21 @@ class MFY_Scorer {
 		$scored = [];
 		foreach ( $candidates as $candidate ) {
 			$post_id = $candidate['post_id'];
-			$scores  = $scores_by_post[ $post_id ] ?? [];
+			$places  = $places_by_post[ $post_id ] ?? [];
 
-			[ $total, $reasons, $matched_strong ] = self::score_candidate( $scores, $interest, $search_filters );
+			[ $total, $reasons, $matched_strong, $affinity ] = self::score_candidate(
+				$scores_by_post[ $post_id ] ?? [],
+				$interest,
+				$search_filters,
+				$places,
+				$geo
+			);
 
 			$debug['candidates'][] = [
 				'post_id' => $post_id,
 				'title'   => get_the_title( $post_id ),
 				'score'   => round( $total, 2 ),
+				'place'   => self::place_label( $places, $geo ),
 				'reasons' => $reasons,
 			];
 
@@ -83,6 +110,8 @@ class MFY_Scorer {
 				'score'     => $total,
 				'views'     => $candidate['views'],
 				'signature' => $matched_strong,
+				'places'    => $places,
+				'affinity'  => $affinity,
 			];
 		}
 
@@ -90,7 +119,7 @@ class MFY_Scorer {
 			return [ $b['score'], $b['views'], $a['post_id'] ] <=> [ $a['score'], $a['views'], $b['post_id'] ];
 		} );
 
-		$picked = self::pick( $scored, $lang, MFY_Config::num_recommendations(), $debug );
+		$picked = self::pick( $scored, $lang, MFY_Config::num_recommendations(), $geo, $debug );
 
 		$recommendations = [];
 		foreach ( $picked as $entry ) {
@@ -137,6 +166,34 @@ class MFY_Scorer {
 	}
 
 	/**
+	 * One weight per viewed post, recency × engagement.
+	 *
+	 * Computed once and handed to both profiles, so a post counts for exactly
+	 * as much when it speaks about interests as when it speaks about places.
+	 */
+	private static function weigh_views( array $ordered_views ): array {
+		$weights = array_values( MFY_Config::recency_weights() );
+		$last    = end( $weights ) ?: 0.3;
+		$out     = [];
+
+		foreach ( array_values( $ordered_views ) as $index => $view ) {
+			$recency    = $weights[ $index ] ?? $last;
+			$engagement = self::engagement_multiplier( $view['duration_seconds'], $view['max_scroll_pct'] );
+
+			$out[] = [
+				'post_id'          => $view['post_id'],
+				'recency'          => $recency,
+				'engagement'       => $engagement,
+				'weight'           => $recency * $engagement,
+				'duration_seconds' => $view['duration_seconds'],
+				'max_scroll_pct'   => $view['max_scroll_pct'],
+			];
+		}
+
+		return $out;
+	}
+
+	/**
 	 * The session interest map: [ filter_slug => accumulated weight ].
 	 *
 	 * Only filters a viewed post scores 2 in contribute. A filter scored 2 by
@@ -145,37 +202,34 @@ class MFY_Scorer {
 	 *
 	 * @return array{0: array<string,float>, 1: array}
 	 */
-	private static function build_interest_profile( array $ordered_views, string $lang ): array {
-		$weights  = array_values( MFY_Config::recency_weights() );
-		$last     = end( $weights ) ?: 0.3;
+	private static function build_interest_profile( array $weighted_views, string $lang ): array {
 		$interest = [];
 		$debug    = [];
 
-		$scores_by_post = MFY_Data::get_filter_scores_bulk( array_column( $ordered_views, 'post_id' ), $lang );
+		$scores_by_post = MFY_Data::get_filter_scores_bulk( array_column( $weighted_views, 'post_id' ), $lang );
 
-		foreach ( array_values( $ordered_views ) as $index => $view ) {
-			$recency    = $weights[ $index ] ?? $last;
-			$engagement = self::engagement_multiplier( $view['duration_seconds'], $view['max_scroll_pct'] );
-			$scores     = $scores_by_post[ $view['post_id'] ] ?? [];
-			$strong     = [];
+		foreach ( $weighted_views as $view ) {
+			$scores = $scores_by_post[ $view['post_id'] ] ?? [];
+			$strong = [];
 
 			foreach ( $scores as $slug => $score ) {
 				if ( 2 !== (int) $score ) {
 					continue;
 				}
 				$strong[] = $slug;
-				$interest[ $slug ] = ( $interest[ $slug ] ?? 0.0 ) + ( $recency * $engagement );
+				$interest[ $slug ] = ( $interest[ $slug ] ?? 0.0 ) + $view['weight'];
 			}
 
 			$debug[] = [
 				'post_id'          => $view['post_id'],
 				'title'            => get_the_title( $view['post_id'] ),
-				'recency'          => $recency,
+				'recency'          => $view['recency'],
 				'duration_seconds' => $view['duration_seconds'],
 				'duration_mult'    => self::duration_multiplier( $view['duration_seconds'] ),
 				'max_scroll_pct'   => $view['max_scroll_pct'],
 				'scroll_mult'      => self::scroll_multiplier( $view['max_scroll_pct'] ),
-				'engagement'       => round( $engagement, 3 ),
+				'engagement'       => round( $view['engagement'], 3 ),
+				'weight'           => round( $view['weight'], 3 ),
 				'strong_filters'   => $strong,
 			];
 		}
@@ -276,13 +330,68 @@ class MFY_Scorer {
 	}
 
 	// -------------------------------------------------------------------------
+	// Candidate pool
+	// -------------------------------------------------------------------------
+
+	/**
+	 * The candidates worth scoring, from two sources merged.
+	 *
+	 * The filter pool answers "what else is this kind of trip?". The geography
+	 * pool answers "what else is about this place?" — and it has to exist
+	 * separately, because the next London article need not share a single
+	 * strongly scored filter with the ones already read. Both pools are
+	 * bounded, and editorial eligibility (§10) applies to every row of both.
+	 */
+	private static function build_pool( string $lang, array $interest, array $search_filters, array $geo, array $exclude, array &$debug ): array {
+		$pool       = [];
+		$pool_slugs = array_values( array_unique( array_merge( array_keys( $interest ), array_keys( $search_filters ) ) ) );
+
+		if ( $pool_slugs ) {
+			foreach ( MFY_Data::get_candidates( $lang, $pool_slugs, $exclude, MFY_Config::candidate_pool_size() ) as $row ) {
+				$pool[ $row['post_id'] ] = $row;
+			}
+		}
+
+		$debug['pool_filter'] = count( $pool );
+
+		$place_ids = [];
+		foreach ( $geo['by_level'] ?? [] as $weights ) {
+			$place_ids = array_merge( $place_ids, array_keys( $weights ) );
+		}
+
+		if ( $place_ids ) {
+			$geo_ids = MFY_Geo::candidate_ids( $lang, $place_ids, $exclude, MFY_Config::geo_pool_size() );
+			$added   = 0;
+
+			foreach ( MFY_Data::filter_eligible( $lang, $geo_ids, $exclude ) as $row ) {
+				if ( ! isset( $pool[ $row['post_id'] ] ) ) {
+					$pool[ $row['post_id'] ] = $row;
+					++$added;
+				}
+			}
+
+			$debug['pool_geo'] = $added;
+		}
+
+		if ( ! $pool ) {
+			$debug['excluded'][] = $pool_slugs || $place_ids
+				? 'no eligible candidates in either pool'
+				: 'no strong session filters and no known geography — nothing to match on';
+		}
+
+		$debug['pool_size'] = count( $pool );
+
+		return array_values( $pool );
+	}
+
+	// -------------------------------------------------------------------------
 	// Candidate scoring
 	// -------------------------------------------------------------------------
 
 	/**
-	 * @return array{0: float, 1: string[], 2: string[]} score, human reasons, matched strong slugs.
+	 * @return array{0: float, 1: string[], 2: string[], 3: ?array} score, reasons, matched strong slugs, geo affinity.
 	 */
-	private static function score_candidate( array $scores, array $interest, array $search_filters ): array {
+	private static function score_candidate( array $scores, array $interest, array $search_filters, array $places, array $geo ): array {
 		$labels  = MFY_Data::signal_labels();
 		$total   = 0.0;
 		$reasons = [];
@@ -323,35 +432,135 @@ class MFY_Scorer {
 			$reasons[] = sprintf( '+%.2f %s (search-term mapping)', $points, $labels[ $slug ] ?? $slug );
 		}
 
+		$affinity = MFY_Geo::affinity( $places, $geo );
+
+		if ( $affinity ) {
+			$total += $affinity['points'];
+			$reasons[] = sprintf(
+				'+%.2f %s (same %s as this session)',
+				$affinity['points'],
+				$geo['places'][ $affinity['place_id'] ] ?? ( '#' . $affinity['place_id'] ),
+				$affinity['level']
+			);
+		}
+
 		sort( $strong );
 
-		return [ $total, $reasons, $strong ];
+		return [ $total, $reasons, $strong, $affinity ];
+	}
+
+	// -------------------------------------------------------------------------
+	// Composition
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Which candidates actually get shown, and in what mix.
+	 *
+	 * When the session is focused on one place, most of the slots are reserved
+	 * for it and filled by score — the reader gets more of where they are, and
+	 * the remaining slot deliberately goes somewhere else so the block still
+	 * offers a way out. When there is no focus, this is a plain top-N with the
+	 * diversity pass, exactly as before geography existed.
+	 *
+	 * Reservation walks the focus chain outwards (city → region → country) and
+	 * settles on the most specific level that can actually fill the reserved
+	 * slots: two unread London articles reserve London; one unread London
+	 * article reserves Greater London, or England, rather than showing a lone
+	 * London card and calling it a theme.
+	 */
+	private static function pick( array $scored, string $lang, int $limit, array $geo, array &$debug ): array {
+		$chain    = $geo['chain'] ?? [];
+		$reserved = $chain ? MFY_Config::geo_reserved_slots( $limit ) : 0;
+		$picked   = [];
+		$focus    = null;
+
+		if ( $reserved > 0 ) {
+			$best = [];
+
+			foreach ( $chain as $link ) {
+				$matches = array_values( array_filter(
+					$scored,
+					static fn( $entry ) => (int) ( $entry['places'][ $link['level'] ] ?? 0 ) === $link['place_id']
+				) );
+				$matches = array_values( array_filter( $matches, static fn( $entry ) => self::lang_ok( $entry['post_id'], $lang ) ) );
+
+				if ( count( $matches ) > count( $best ) ) {
+					$best  = $matches;
+					$focus = $link;
+				}
+				if ( count( $matches ) >= $reserved ) {
+					$best  = $matches;
+					$focus = $link;
+					break; // Most specific level that can fill the quota wins.
+				}
+			}
+
+			$picked = array_slice( $best, 0, $reserved );
+
+			$debug['composition'] = [
+				'focus_level'    => $focus['level'] ?? null,
+				'focus_place'    => $focus ? ( $geo['places'][ $focus['place_id'] ] ?? $focus['place_id'] ) : null,
+				'focus_share'    => $focus['share'] ?? null,
+				'slots_reserved' => $reserved,
+				'slots_filled'   => count( $picked ),
+				'available'      => count( $best ),
+			];
+		}
+
+		$taken = array_column( $picked, 'post_id' );
+
+		// The remaining slots go elsewhere: the best-scoring candidates that
+		// are *not* in the focused place, so three London articles cannot turn
+		// the whole block into London.
+		$picked = self::fill( $picked, $scored, $lang, $limit, $focus, true, $debug );
+
+		// Only if there is nowhere else worth going does the focus fill the
+		// rest — a slightly repetitive card still beats an empty slot.
+		$picked = self::fill( $picked, $scored, $lang, $limit, $focus, false, $debug );
+
+		if ( $reserved > 0 ) {
+			$debug['composition']['slots_elsewhere'] = count( $picked ) - count( $taken );
+		}
+
+		return $picked;
 	}
 
 	/**
-	 * Top N, verified for language, with a light diversity pass.
+	 * Adds candidates until the block is full.
 	 *
-	 * Two candidates matching on exactly the same set of strong filters are
-	 * near-interchangeable to the reader, so the second one steps aside for
-	 * anything more varied. If nothing more varied exists it comes back — a
-	 * slightly repetitive third card beats an empty slot.
+	 * @param array|null $focus       The focused chain link, or null when unfocused.
+	 * @param bool       $avoid_focus Skip candidates sitting in the focused place.
 	 */
-	private static function pick( array $scored, string $lang, int $limit, array &$debug ): array {
-		$picked      = [];
-		$deferred    = [];
-		$signatures  = [];
+	private static function fill( array $picked, array $scored, string $lang, int $limit, ?array $focus, bool $avoid_focus, array &$debug ): array {
+		if ( count( $picked ) >= $limit ) {
+			return $picked;
+		}
 
+		$taken      = array_flip( array_column( $picked, 'post_id' ) );
+		$signatures = [];
+		$deferred   = [];
+
+		// The diversity pass applies to discovery picks only. Reserved picks
+		// are supposed to look alike — that is the whole point of a focus —
+		// so their signatures are not registered as "already seen".
 		foreach ( $scored as $entry ) {
 			if ( count( $picked ) >= $limit ) {
 				break;
 			}
+			if ( isset( $taken[ $entry['post_id'] ] ) ) {
+				continue;
+			}
 
-			// Language is enforced by the pool query via the tvf lang column;
-			// this re-checks the handful of posts actually about to be shown
-			// against Polylang itself.
-			$post_lang = MFY_Data::post_lang( $entry['post_id'] );
-			if ( $post_lang !== $lang ) {
-				$debug['excluded'][] = sprintf( '%d language mismatch (%s ≠ %s)', $entry['post_id'], $post_lang ?: '?', $lang );
+			$in_focus = $focus && (int) ( $entry['places'][ $focus['level'] ] ?? 0 ) === $focus['place_id'];
+			if ( $avoid_focus && $in_focus ) {
+				continue;
+			}
+
+			// Language is enforced by the pool queries via the tvf lang column
+			// and the per-language place terms; this re-checks the handful of
+			// posts actually about to be shown against Polylang itself.
+			if ( ! self::lang_ok( $entry['post_id'], $lang ) ) {
+				$debug['excluded'][] = sprintf( '%d language mismatch', $entry['post_id'] );
 				continue;
 			}
 
@@ -363,16 +572,74 @@ class MFY_Scorer {
 			}
 
 			$signatures[ $signature ] = true;
-			$picked[]                 = $entry;
+			$taken[ $entry['post_id'] ] = true;
+			$picked[] = $entry;
 		}
 
 		foreach ( $deferred as $entry ) {
 			if ( count( $picked ) >= $limit ) {
 				break;
 			}
+			$taken[ $entry['post_id'] ] = true;
 			$picked[] = $entry;
 		}
 
 		return $picked;
+	}
+
+	/** Memoized Polylang check — pick() may test the same post more than once. */
+	private static function lang_ok( int $post_id, string $lang ): bool {
+		$key = $post_id . ':' . $lang;
+
+		if ( ! isset( self::$lang_cache[ $key ] ) ) {
+			self::$lang_cache[ $key ] = ( MFY_Data::post_lang( $post_id ) === $lang );
+		}
+
+		return self::$lang_cache[ $key ];
+	}
+
+	// -------------------------------------------------------------------------
+	// Debug helpers
+	// -------------------------------------------------------------------------
+
+	/** The session geography, in names rather than place IDs. */
+	private static function describe_geo( array $geo ): array {
+		if ( empty( $geo['by_level'] ) ) {
+			return [ 'available' => MFY_Geo::available(), 'focus' => null, 'levels' => [] ];
+		}
+
+		$levels = [];
+		foreach ( $geo['by_level'] as $level => $weights ) {
+			foreach ( $weights as $place_id => $weight ) {
+				$levels[ $level ][ $geo['places'][ $place_id ] ?? ( '#' . $place_id ) ] = round( $weight, 3 );
+			}
+		}
+
+		$focus = [];
+		foreach ( $geo['chain'] as $link ) {
+			$focus[] = sprintf(
+				'%s: %s (%.0f%% of this session)',
+				$link['level'],
+				$geo['places'][ $link['place_id'] ] ?? ( '#' . $link['place_id'] ),
+				$link['share'] * 100
+			);
+		}
+
+		return [
+			'available' => true,
+			'levels'    => $levels,
+			'focus'     => $focus,
+		];
+	}
+
+	/** A candidate's most specific known place, for the debug table. */
+	private static function place_label( array $places, array $geo ): string {
+		foreach ( MFY_Geo::levels() as $level ) {
+			if ( ! empty( $places[ $level ] ) ) {
+				return (string) ( $geo['places'][ $places[ $level ] ] ?? ( '#' . $places[ $level ] ) );
+			}
+		}
+
+		return '—';
 	}
 }
