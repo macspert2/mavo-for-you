@@ -312,6 +312,88 @@ class MFY_Data {
 	}
 
 	/**
+	 * Should this post's views enter the profile at all?
+	 *
+	 * The single answer to that question, so the browser and the endpoint can
+	 * never disagree: the frontend uses it to decide whether to track, and the
+	 * REST layer re-applies it to every view it is handed, because a profile
+	 * recorded before this rule existed — or by a client that ignores it — must
+	 * not smuggle a contact page back in.
+	 *
+	 * The `mavo_for_you_track_post` filter has the last word in both places,
+	 * so a site can re-enable a page this refuses, or exclude one it allows.
+	 */
+	public static function should_track_post( int $post_id ): bool {
+		return (bool) apply_filters(
+			'mavo_for_you_track_post',
+			! self::is_utility_page( $post_id ),
+			$post_id
+		);
+	}
+
+	/**
+	 * Contact, privacy and legal pages (§3).
+	 *
+	 * They carry no filter scores, no geography and no hub, so they add
+	 * nothing to a profile — but left in they would still count toward the
+	 * two-meaningful-views threshold and could surface as "Consultés
+	 * récemment : Contact", which reads as a bug.
+	 */
+	public static function is_utility_page( int $post_id ): bool {
+		$post = get_post( $post_id );
+
+		if ( ! $post instanceof WP_Post || 'page' !== $post->post_type ) {
+			return false;
+		}
+
+		if ( in_array( $post_id, self::privacy_page_ids(), true ) ) {
+			return true;
+		}
+
+		// "contact-en" and "impressum-2" are the same page as far as this is
+		// concerned: Polylang and WordPress both suffix slugs on collision.
+		$slug = preg_replace( '/-(?:[a-z]{2}|\d+)$/', '', (string) $post->post_name );
+
+		return in_array( $slug, MFY_Config::excluded_page_slugs(), true )
+			|| in_array( (string) $post->post_name, MFY_Config::excluded_page_slugs(), true );
+	}
+
+	/**
+	 * The privacy policy page, and its translations.
+	 *
+	 * WordPress stores one ID; on a Polylang site the other languages have
+	 * their own pages, and all of them are the privacy policy.
+	 *
+	 * @return int[]
+	 */
+	private static function privacy_page_ids(): array {
+		static $cache = null;
+
+		if ( null !== $cache ) {
+			return $cache;
+		}
+
+		$privacy_id = (int) get_option( 'wp_page_for_privacy_policy' );
+
+		if ( ! $privacy_id ) {
+			return $cache = [];
+		}
+
+		$ids = [ $privacy_id ];
+
+		if ( function_exists( 'pll_get_post' ) ) {
+			foreach ( MFY_Config::site_langs() as $lang ) {
+				$translated = (int) pll_get_post( $privacy_id, $lang );
+				if ( $translated ) {
+					$ids[] = $translated;
+				}
+			}
+		}
+
+		return $cache = array_values( array_unique( $ids ) );
+	}
+
+	/**
 	 * The public shape of one recommendation / recently-viewed entry.
 	 *
 	 * @param bool $with_excerpt Recently-viewed items are compact and skip it.
@@ -335,6 +417,19 @@ class MFY_Data {
 
 		return $item;
 	}
+}
+
+/**
+ * Data attribute other Mavo plugins/templates can drop on internal links so a
+ * future "already read" pass can match them against the local history.
+ *
+ * Returns a leading-space attribute string ready to concatenate inside a tag,
+ * or '' for an invalid ID.
+ */
+function mavo_for_you_link_data_attr( int $post_id ): string {
+	$post_id = absint( $post_id );
+
+	return $post_id ? ' data-mavo-post-id="' . esc_attr( (string) $post_id ) . '"' : '';
 }
 
 /**

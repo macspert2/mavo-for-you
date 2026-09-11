@@ -68,6 +68,20 @@ check( 'invalid current_post_id refused', call( [ 'current_post_id' => 999999 ] 
 check( 'draft as current post refused', call( [ 'current_post_id' => 7 ] )->data['show'] === false );
 check( 'garbage payload does not fatal', call( [ 'current_post_id' => 1, 'views' => 'nope', 'searches' => 5, 'referral' => 'x' ] )->data['show'] === false );
 
+// --- Shortcode handover -------------------------------------------------------
+$plain = call( $base );
+check( 'with no limit sent, the default of 3 applies', count( $plain->data['recommendations'] ) <= MFY_Config::num_recommendations(), count( $plain->data['recommendations'] ) . ' returned' );
+
+$GLOBALS['IS_ADMIN'] = false;
+$sized = call( $base + [ 'limit' => 6 ] );
+check( 'the personalised block honours the shortcode limit', count( $sized->data['recommendations'] ) <= 6 );
+$clamped = call( $base + [ 'limit' => 9999 ] );
+check( 'an absurd limit from the client is clamped', count( $clamped->data['recommendations'] ) <= MFY_Config::shortcode_max_limit() );
+$levelled = call( $base + [ 'geo_level' => 'country' ] );
+check( 'a geo level from the client is accepted', $levelled->data['show'] === true );
+$bogus = call( $base + [ 'geo_level' => 'planet' ] );
+check( 'an unknown geo level is ignored rather than fataling', $bogus->data['show'] === true );
+
 // --- Clamping and bounding --------------------------------------------------
 $GLOBALS['IS_ADMIN'] = true;
 $hostile = call( [

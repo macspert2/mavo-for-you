@@ -38,6 +38,32 @@ class MFY_Config {
 		);
 	}
 
+	/**
+	 * Page slugs that never enter the profile.
+	 *
+	 * §3 asks for contact/privacy/legal utility pages to be left out "where
+	 * practical". WordPress knows its own privacy page and that is handled
+	 * separately; the rest is a slug list, because nothing in core marks a page
+	 * as a utility page. Deliberately narrow — legal and contact only. An
+	 * "about" page is editorial and worth tracking.
+	 *
+	 * Matched against pages only, never posts, and after a trailing language
+	 * or duplicate suffix is stripped ("contact-en", "impressum-2").
+	 */
+	public static function excluded_page_slugs(): array {
+		return (array) apply_filters( 'mavo_for_you_excluded_page_slugs', [
+			// FR
+			'contact', 'contactez-nous', 'mentions-legales', 'politique-de-confidentialite',
+			'confidentialite', 'cgu', 'cgv', 'plan-du-site',
+			// EN
+			'contact-us', 'privacy', 'privacy-policy', 'legal', 'legal-notice',
+			'terms', 'terms-of-service', 'disclaimer', 'sitemap',
+			// DE
+			'kontakt', 'impressum', 'datenschutz', 'datenschutzerklaerung',
+			'agb', 'nutzungsbedingungen', 'haftungsausschluss',
+		] );
+	}
+
 	/** Post types whose views enter the local profile. */
 	public static function trackable_post_types(): array {
 		return (array) apply_filters( 'mavo_for_you_trackable_post_types', [ 'post', 'page' ] );
@@ -176,6 +202,33 @@ class MFY_Config {
 	 */
 	public static function referral_search_factor(): float {
 		return (float) apply_filters( 'mavo_for_you_referral_search_factor', 0.5 );
+	}
+
+	// -------------------------------------------------------------------------
+	// [geo_related] — the impersonal block
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Default slots for the shortcode.
+	 *
+	 * Six, matching what [geo_related] has always shown, so moving the block
+	 * between plugins does not resize a section that is live on many posts.
+	 * The personalized block honours whatever the shortcode asked for, so the
+	 * two never differ in size; the after-content block keeps its own default
+	 * of three.
+	 */
+	public static function shortcode_limit(): int {
+		return (int) apply_filters( 'mavo_for_you_shortcode_limit', 6 );
+	}
+
+	/** Ceiling on the shortcode's limit attribute, and on the REST override. */
+	public static function shortcode_max_limit(): int {
+		return (int) apply_filters( 'mavo_for_you_shortcode_max_limit', 12 );
+	}
+
+	/** How long an impersonal block survives, absent an edit. */
+	public static function shortcode_cache_ttl(): int {
+		return (int) apply_filters( 'mavo_for_you_shortcode_cache_ttl', 12 * HOUR_IN_SECONDS );
 	}
 
 	// -------------------------------------------------------------------------
@@ -455,6 +508,7 @@ class MFY_Config {
 				'heading'  => __( 'Pour vous', 'mavo-for-you' ),
 				'subtitle' => __( 'Suggestions basées sur les articles consultés pendant votre visite sur Maman Voyage.', 'mavo-for-you' ),
 				'recent'   => __( 'Consultés récemment', 'mavo-for-you' ),
+				'impersonalHeading' => __( 'À lire aussi', 'mavo-for-you' ),
 				'reset'    => __( 'Effacer mon historique', 'mavo-for-you' ),
 				'resetHint' => __( 'Efface les articles consultés enregistrés dans votre navigateur.', 'mavo-for-you' ),
 				'resetDone' => __( 'Historique effacé. Les suggestions repartiront de zéro.', 'mavo-for-you' ),
@@ -463,6 +517,7 @@ class MFY_Config {
 				'heading'  => __( 'For you', 'mavo-for-you' ),
 				'subtitle' => __( "Suggestions based on the articles you've viewed during this visit to Maman Voyage.", 'mavo-for-you' ),
 				'recent'   => __( 'Recently viewed', 'mavo-for-you' ),
+				'impersonalHeading' => __( 'Also worth reading', 'mavo-for-you' ),
 				'reset'    => __( 'Clear my history', 'mavo-for-you' ),
 				'resetHint' => __( 'Clears the viewed articles stored in your browser.', 'mavo-for-you' ),
 				'resetDone' => __( 'History cleared. Suggestions will start over.', 'mavo-for-you' ),
@@ -471,6 +526,7 @@ class MFY_Config {
 				'heading'  => __( 'Für Euch', 'mavo-for-you' ),
 				'subtitle' => __( 'Vorschläge auf Basis der Artikel, die Ihr während dieses Besuchs auf Maman Voyage angesehen habt.', 'mavo-for-you' ),
 				'recent'   => __( 'Kürzlich angesehen', 'mavo-for-you' ),
+				'impersonalHeading' => __( 'Auch lesenswert', 'mavo-for-you' ),
 				'reset'    => __( 'Verlauf löschen', 'mavo-for-you' ),
 				'resetHint' => __( 'Löscht die in Eurem Browser gespeicherten angesehenen Artikel.', 'mavo-for-you' ),
 				'resetDone' => __( 'Verlauf gelöscht. Die Vorschläge beginnen von vorn.', 'mavo-for-you' ),

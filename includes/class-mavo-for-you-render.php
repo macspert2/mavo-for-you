@@ -67,7 +67,9 @@ class MFY_Render {
 			return false;
 		}
 
-		return (bool) apply_filters( 'mavo_for_you_track_post', true, $post->ID );
+		// Utility pages and the mavo_for_you_track_post filter, decided in one
+		// place so the endpoint applies exactly the same rule.
+		return MFY_Data::should_track_post( $post->ID );
 	}
 
 	/** Should the block itself be offered on this request? */
@@ -128,6 +130,15 @@ class MFY_Render {
 
 	private static function placeholder_html(): string {
 		if ( self::$rendered || ! self::should_show_block() ) {
+			return '';
+		}
+
+		// The post places the block itself with [geo_related]. One block per
+		// page: the shortcode's position wins, and this hook stands down —
+		// whether or not the shortcode found anything worth showing, since a
+		// second block after the content would be exactly the duplication this
+		// replaces.
+		if ( MFY_Shortcode::post_has_shortcode( (int) get_queried_object_id() ) ) {
 			return '';
 		}
 
@@ -200,6 +211,7 @@ class MFY_Render {
 		$config = [
 			'endpoint'           => MFY_Rest::url(),
 			'postId'             => $show_block ? (int) get_queried_object_id() : 0,
+			'maxLimit'           => MFY_Config::shortcode_max_limit(),
 			'lang'               => $lang,
 			'mode'               => $show_block ? 'content' : 'search',
 			'showBlock'          => $show_block,

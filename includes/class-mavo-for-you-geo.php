@@ -235,15 +235,21 @@ class MFY_Geo {
 	 *
 	 * @param array $weighted_views [ [ 'post_id' => int, 'weight' => float ], … ]
 	 */
-	public static function session_profile( array $weighted_views, string $lang ): array {
+	public static function session_profile( array $weighted_views, string $lang, ?array $levels = null ): array {
+		// A caller may narrow the levels — [geo_related level="country"] says
+		// "organise this around the country", and the profile it gets back
+		// then knows about nothing else.
+		$levels = $levels ? array_values( array_intersect( self::levels(), $levels ) ) : self::levels();
+
 		$profile = [
 			'by_level' => [],
 			'totals'   => [],
 			'chain'    => [],
 			'places'   => [],
+			'levels'   => $levels,
 		];
 
-		if ( ! $weighted_views || ! self::available() || ! self::supports_lang( $lang ) ) {
+		if ( ! $weighted_views || ! $levels || ! self::available() || ! self::supports_lang( $lang ) ) {
 			return $profile;
 		}
 
@@ -253,7 +259,7 @@ class MFY_Geo {
 			$weight = (float) $view['weight'];
 			$map    = $places[ $view['post_id'] ] ?? [];
 
-			foreach ( self::levels() as $level ) {
+			foreach ( $levels as $level ) {
 				if ( empty( $map[ $level ] ) ) {
 					continue;
 				}
@@ -267,7 +273,7 @@ class MFY_Geo {
 
 		$threshold = MFY_Config::geo_focus_threshold();
 
-		foreach ( self::levels() as $level ) {
+		foreach ( $levels as $level ) {
 			$weights = $profile['by_level'][ $level ] ?? [];
 			$total   = $profile['totals'][ $level ] ?? 0.0;
 
@@ -323,7 +329,7 @@ class MFY_Geo {
 
 		$points_by_level = MFY_Config::geo_points();
 
-		foreach ( self::levels() as $level ) {
+		foreach ( $profile['levels'] ?? self::levels() as $level ) {
 			if ( empty( $candidate_places[ $level ] ) ) {
 				continue;
 			}

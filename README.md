@@ -25,9 +25,51 @@ JSON response        no-store, private — never publicly cached
 assets/js            injects the block into the placeholder
 ```
 
-Nothing personal is stored server-side. There is no profile, no cookie, no analytics
+Only the impersonal block is ever cached server-side (a transient carrying a
+generation counter that any post save or hub change bumps). Personalised responses are
+cached nowhere. Nothing personal is stored server-side. There is no profile, no cookie, no analytics
 table, no third party. The visitor's history lives in their browser under
 `mavo_for_you_v0` and expires 24 hours after the last interaction.
+
+## Two blocks, one block
+
+The plugin renders one recommendation block, which exists in two states.
+
+**Impersonal** — `[geo_related]`, rendered server-side into the cached page.
+"What should someone reading *this page* read next?", with no visitor in the question.
+This is the block that used to live in `mavo-geotag-plus`; it moved here because its
+scoring is this plugin's scoring, and because that plugin had already grown a
+dependency on these hub labels to keep the two blocks' wording in step.
+
+**Personalised** — "Pour vous", injected by the frontend controller once the visitor
+has read enough. On a page carrying the shortcode it replaces the impersonal block in
+place; on any other eligible page it appears after the content, before comments.
+
+They are the same code. An impersonal ranking is `MFY_Scorer::rank_for_post()`, which
+is `rank()` with a session of exactly one view — the current post, at neutral
+engagement, weighing exactly 1. Hub placement, the geography quota, sibling scoring and
+the diversity pass all follow from that, so the two states cannot drift apart.
+
+```
+cached page   [geo_related] → placeholder + impersonal block   (Swift/Cloudflare cache this)
+      ↓
+   JS reads the placeholder's data-limit / data-level
+      ↓
+   POST /wp-json/mavo/v1/for-you  → enough history?
+      ↓                                    ↓
+     yes: replace in place              no: the impersonal block simply stays
+```
+
+The shortcode's `limit` and `level` are carried into the personalised request, so the
+section does not resize or re-aim under the reader. `[geo_related_full]` is an alias,
+kept because post content still contains it. `post_id` and `style` are accepted and
+ignored. `geo_tagger_related_posts()` and `geo_tagger_related_posts_full()` survive as
+shims.
+
+A post carrying the shortcode never also gets the after-content block — the shortcode's
+position wins, and the hook stands down. If the impersonal ranking finds nothing, the
+placeholder is still emitted (empty, and hidden by CSS), so a visitor who later earns a
+personalised block still has somewhere to put it.
 
 ## The signals
 
@@ -168,11 +210,30 @@ includes/class-mavo-for-you-hubs.php the only code that touches hub data
 includes/class-mavo-for-you-scorer.php   ranking
 includes/class-mavo-for-you-rest.php     endpoint + input validation
 includes/class-mavo-for-you-render.php   placeholder, assets, eligibility
+includes/class-mavo-for-you-shortcode.php  [geo_related], the impersonal block
+includes/class-mavo-for-you-cache.php      generation-busted transients
 includes/class-mavo-for-you-admin.php    Settings → Mavo For You
 assets/js/mavo-for-you.js            tracking + request + rendering
 assets/css/mavo-for-you.css          section styling (cards reuse .mv-tile)
 tests/                               plain-PHP suites, no tooling required
 ```
+
+## What is not tracked
+
+Beyond the obvious (home, search, archives, 404, feeds, admin, unpublished), contact,
+privacy and legal **pages** are excluded — §3's "utility pages, where practical".
+WordPress knows its own privacy page (and its Polylang translations); everything else
+is a slug list, `mavo_for_you_excluded_page_slugs`, matched against pages only and
+tolerant of `-en` / `-2` suffixes. An "about" page is editorial and stays tracked.
+
+They contribute nothing to a profile anyway — no filter scores, no geography, no hub —
+but left in they would still count toward the two-meaningful-views threshold and could
+surface as *"Consultés récemment : Contact"*.
+
+The rule lives in `MFY_Data::should_track_post()` and is applied in both places that
+can decide it: the frontend, which then doesn't track, and the endpoint, which re-drops
+any such view a client sends anyway — a profile recorded before this rule existed must
+not smuggle a contact page back in. `mavo_for_you_track_post` has the last word in both.
 
 ## Settings
 
@@ -255,6 +316,9 @@ Scoring: `mavo_for_you_recency_weights`, `mavo_for_you_duration_multipliers`,
 `mavo_for_you_points_search_strong`, `mavo_for_you_points_search_weak`,
 `mavo_for_you_referral_search_factor`, `mavo_for_you_candidate_pool_size`.
 
+Shortcode: `mavo_for_you_shortcode_limit`, `mavo_for_you_shortcode_max_limit`,
+`mavo_for_you_shortcode_cache_ttl`, `mavo_for_you_shortcode_html`.
+
 Hubs: `mavo_for_you_max_hub_recommendations`, `mavo_for_you_hub_max_depth`,
 `mavo_for_you_hub_ancestor_decay`, `mavo_for_you_hub_points`,
 `mavo_for_you_hub_child_points`, `mavo_for_you_hub_child_hubs`,
@@ -265,6 +329,7 @@ Geography: `mavo_for_you_geo_levels`, `mavo_for_you_geo_points`,
 `mavo_for_you_geo_reserved_slots`, `mavo_for_you_geo_pool_size`.
 
 Behaviour: `mavo_for_you_track_post`, `mavo_for_you_show_block`,
+`mavo_for_you_excluded_page_slugs`,
 `mavo_for_you_signal_categories`, `mavo_for_you_trackable_post_types`,
 `mavo_for_you_candidate_post_types`, `mavo_for_you_search_filter_map`,
 `mavo_for_you_labels`, `mavo_for_you_placeholder_html`,
@@ -279,6 +344,9 @@ php tests/test-geo.php       # focus detection, slot quota, cascade, fallback
 php tests/test-hubs.php      # hub placement, ancestor walk, validation, recent list
 php tests/test-hub-children.php  # sibling candidates, eligibility, bounded pools
 php tests/test-no-hubs.php       # every hub feature off when Hub Manager is absent
+php tests/test-utility-pages.php # contact/privacy/legal pages stay out of the profile
+php tests/test-shortcode.php     # [geo_related]: impersonal ranking, markup, handover
+php tests/test-render.php        # where the placeholder goes, and where it stands down
 node tests/test-frontend.js  # tracking, qualification gate, storage, reset
 ```
 
@@ -307,6 +375,10 @@ npm.
 - Recommendation and recently-viewed links carry `data-mavo-post-id`.
 - Click "Clear my history", then reload: the block should be gone until two new
   meaningful views accumulate.
+- On a post with `[geo_related]`: the block is in the cached HTML (view source with JS
+  off), sits where the shortcode is, and there is no second block after the content.
+- Read two more articles, reload that post: the same section should now be headed
+  "Pour vous", same number of cards, with "Consultés récemment" added below.
 
 ## Deliberately not in V0
 

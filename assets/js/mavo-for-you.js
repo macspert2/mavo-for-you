@@ -392,6 +392,34 @@
 		return count;
 	}
 
+	/**
+	 * What the placeholder itself asks for.
+	 *
+	 * On a page carrying [geo_related] the server has already rendered an
+	 * impersonal block of a given size and geographic level into the cached
+	 * HTML; those are read back off the element so the personalized block that
+	 * replaces it keeps the same shape.
+	 */
+	function placeholderOptions(host) {
+		var options = {};
+
+		if (!host) {
+			return options;
+		}
+
+		var limit = parseInt(host.getAttribute('data-limit'), 10);
+		if (!isNaN(limit) && limit > 0) {
+			options.limit = Math.min(limit, cfg.maxLimit || 12);
+		}
+
+		var level = host.getAttribute('data-level');
+		if (level) {
+			options.geo_level = level;
+		}
+
+		return options;
+	}
+
 	function payload(profile) {
 		var views = profile.views.slice(0, cfg.maxViews).map(function (view) {
 			return {
@@ -413,6 +441,16 @@
 	}
 
 	function request(profile, host) {
+		var body = payload(profile);
+		var options = placeholderOptions(host);
+
+		if (options.limit) {
+			body.limit = options.limit;
+		}
+		if (options.geo_level) {
+			body.geo_level = options.geo_level;
+		}
+
 		var headers = { 'Content-Type': 'application/json' };
 		if (cfg.nonce) {
 			headers['X-WP-Nonce'] = cfg.nonce;
@@ -423,7 +461,7 @@
 			headers: headers,
 			credentials: cfg.nonce ? 'same-origin' : 'omit',
 			cache: 'no-store',
-			body: JSON.stringify(payload(profile))
+			body: JSON.stringify(body)
 		}).then(function (response) {
 			return response.ok ? response.json() : null;
 		}).then(function (data) {
@@ -433,6 +471,9 @@
 
 			debugLog('response', data);
 
+			// On anything less than a usable answer the placeholder is left
+			// exactly as the server rendered it — which on a [geo_related]
+			// page means the impersonal block simply stays.
 			if (data.show && data.recommendations && data.recommendations.length) {
 				render(host, data);
 			}

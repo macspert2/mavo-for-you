@@ -8,8 +8,19 @@
  * presentable if it is ever rendered without the child theme.
  */
 
+/*
+ * No layout gap before the response arrives, or if it never does.
+ *
+ * :has() rather than :empty, because the shortcode renders the placeholder
+ * with indentation inside it — whitespace is content as far as :empty is
+ * concerned, so it would never match there. This asks the question that
+ * actually matters: is there a block in it?
+ */
+.mavo-for-you-placeholder:not(:has(.mfy)) {
+	display: none;
+}
+
 .mavo-for-you-placeholder:empty {
-	/* No layout gap before the response arrives, or if it never does. */
 	display: none;
 }
 

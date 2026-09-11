@@ -46,6 +46,10 @@ class MFY_Rest {
 			return self::respond( self::empty_response( '', 'invalid current_post_id' ), $debug_mode );
 		}
 
+		if ( ! MFY_Data::should_track_post( $current_post_id ) ) {
+			return self::respond( self::empty_response( '', 'not a trackable page' ), $debug_mode );
+		}
+
 		// The client's own idea of the language is ignored entirely.
 		$lang = MFY_Data::post_lang( $current_post_id );
 
@@ -72,7 +76,23 @@ class MFY_Rest {
 			return self::respond( self::empty_response( $lang, 'not enough meaningful views' ), $debug_mode );
 		}
 
-		$ranked = MFY_Scorer::rank( $current_post_id, $lang, $views, $searches, $referral );
+		// A page carrying [geo_related] already shows an impersonal block of a
+		// given size, at a given geographic level. The personalized block that
+		// replaces it keeps both, so the section does not resize or re-aim
+		// under the reader. Clamped like everything else the client sends.
+		$options = [];
+
+		$limit = absint( $request->get_param( 'limit' ) );
+		if ( $limit ) {
+			$options['limit'] = min( $limit, MFY_Config::shortcode_max_limit() );
+		}
+
+		$level = sanitize_key( (string) $request->get_param( 'geo_level' ) );
+		if ( $level && in_array( $level, MFY_Geo::levels(), true ) ) {
+			$options['geo_levels'] = [ $level ];
+		}
+
+		$ranked = MFY_Scorer::rank( $current_post_id, $lang, $views, $searches, $referral, $options );
 
 		$response = [
 			'show'            => ! empty( $ranked['recommendations'] ),
@@ -115,6 +135,11 @@ class MFY_Rest {
 				continue;
 			}
 			if ( ! MFY_Data::is_valid_post( $post_id, $types ) ) {
+				continue;
+			}
+			// A profile recorded before this rule existed, or by a client that
+			// ignores it, must not smuggle a contact page back in.
+			if ( ! MFY_Data::should_track_post( $post_id ) ) {
 				continue;
 			}
 			// Same-language only, enforced here rather than trusted from the

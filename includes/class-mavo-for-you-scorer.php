@@ -28,9 +28,11 @@ class MFY_Scorer {
 	 * @param array      $views    Validated views, each [post_id, duration_seconds, max_scroll_pct, last_seen].
 	 * @param array      $searches Validated searches, each [query, source, timestamp].
 	 * @param array|null $referral Validated referral, or null.
+	 * @param array      $options  'limit' — slots to fill, default num_recommendations().
+	 *                             'geo_levels' — narrow the geography to these levels.
 	 * @return array{recommendations: array, debug: array}
 	 */
-	public static function rank( int $current_post_id, string $lang, array $views, array $searches, ?array $referral ): array {
+	public static function rank( int $current_post_id, string $lang, array $views, array $searches, ?array $referral, array $options = [] ): array {
 		$debug = [
 			'lang'            => $lang,
 			'profile_views'   => [],
@@ -53,7 +55,7 @@ class MFY_Scorer {
 		$search_filters         = self::search_filters( $searches, $referral, $lang );
 		$debug['search_filters'] = $search_filters;
 
-		$geo           = MFY_Geo::session_profile( $weighted, $lang );
+		$geo           = MFY_Geo::session_profile( $weighted, $lang, $options['geo_levels'] ?? null );
 		$debug['geo']  = self::describe_geo( $geo );
 
 		$exclude = array_merge( [ $current_post_id ], array_column( $ordered, 'post_id' ) );
@@ -134,7 +136,8 @@ class MFY_Scorer {
 			return [ $b['score'], $b['views'], $a['post_id'] ] <=> [ $a['score'], $a['views'], $b['post_id'] ];
 		} );
 
-		$picked = self::pick( $scored, $lang, MFY_Config::num_recommendations(), $geo, $hubs, $debug );
+		$limit  = max( 1, (int) ( $options['limit'] ?? MFY_Config::num_recommendations() ) );
+		$picked = self::pick( $scored, $lang, $limit, $geo, $hubs, $debug );
 
 		$recommendations = [];
 		foreach ( $picked as $entry ) {
@@ -157,6 +160,31 @@ class MFY_Scorer {
 		usort( $debug['candidates'], static fn( $a, $b ) => $b['score'] <=> $a['score'] );
 
 		return [ 'recommendations' => $recommendations, 'debug' => $debug ];
+	}
+
+	/**
+	 * The same ranking with no visitor in it: what this page relates to,
+	 * judged only by the page itself.
+	 *
+	 * An impersonal block is a session of exactly one view — the current post,
+	 * read attentively enough to count for a full unit of weight. Everything
+	 * else follows: its hub is placed first, its place reserves the geography
+	 * slots, its filters find the siblings. The two blocks cannot drift apart,
+	 * because they are the same code with a different session.
+	 *
+	 * @param array $options See rank().
+	 */
+	public static function rank_for_post( int $post_id, string $lang, array $options = [] ): array {
+		// Neutral engagement: 30s and 50% both sit in the 1.00 band, so the
+		// synthetic view weighs exactly 1 and the numbers stay readable.
+		$view = [
+			'post_id'          => $post_id,
+			'duration_seconds' => 30,
+			'max_scroll_pct'   => 50,
+			'last_seen'        => time(),
+		];
+
+		return self::rank( $post_id, $lang, [ $view ], [], null, $options );
 	}
 
 	// -------------------------------------------------------------------------

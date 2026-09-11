@@ -3,12 +3,17 @@
 
 define( 'ABSPATH', '/' );
 define( 'DAY_IN_SECONDS', 86400 );
+define( 'HOUR_IN_SECONDS', 3600 );
 define( 'ARRAY_A', 'ARRAY_A' );
 
 $GLOBALS['MOCK_POSTS'] = [];   // id => ['title'=>, 'lang'=>, 'status'=>, 'type'=>]
 $GLOBALS['MOCK_WEIGHTS'] = []; // id => ['lang'=>, 'slugs'=>[slug=>w]]
 $GLOBALS['MOCK_PLACES'] = [];      // place_id => ['level'=>, 'name'=>, 'parent_id'=>]
 $GLOBALS['MOCK_POST_PLACES'] = []; // post_id  => [level => place_id]
+$GLOBALS['MOCK_OPTIONS'] = [];     // option_name => value
+$GLOBALS['MOCK_TRANSIENTS'] = [];
+$GLOBALS['MOCK_SHORTCODES'] = [];
+$GLOBALS['MOCK_CURRENT_POST'] = 0;
 $GLOBALS['MOCK_HUB_TYPE'] = [];    // post_id  => 'geo'|'theme'
 $GLOBALS['MOCK_PRIMARY_HUB'] = []; // post_id  => [type => hub post_id]
 
@@ -17,13 +22,28 @@ function absint( $v ) { return abs( (int) $v ); }
 function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i', '', (string) $v ) ); }
 function __( $s, $d = '' ) { return $s; }
 function esc_html( $s ) { return $s; }
-function get_option( $k, $d = null ) { return $d; }
+function get_option( $k, $d = null ) { return $GLOBALS['MOCK_OPTIONS'][ $k ] ?? $d; }
 function remove_accents( $s ) { return strtr( $s, [ 'é'=>'e','è'=>'e','ê'=>'e','à'=>'a','ù'=>'u','ô'=>'o','î'=>'i','ç'=>'c' ] ); }
 function get_the_title( $p ) { $id = is_object( $p ) ? $p->ID : (int) $p; return $GLOBALS['MOCK_POSTS'][ $id ]['title'] ?? "#$id"; }
 function get_permalink( $p ) { $id = is_object($p)?$p->ID:$p; return "https://example.test/$id/"; }
 function get_the_post_thumbnail_url( $p, $s = '' ) { return 'https://example.test/img.jpg'; }
 function get_the_excerpt( $p ) { return 'Excerpt.'; }
 function wp_strip_all_tags( $s ) { return $s; }
+function esc_attr( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); }
+function esc_url( $s ) { return (string) $s; }
+function add_shortcode( $tag, $cb ) { $GLOBALS['MOCK_SHORTCODES'][ $tag ] = $cb; }
+function has_shortcode( $content, $tag ) { return (bool) preg_match( '/\[' . preg_quote( $tag, '/' ) . '[\s\]]/', (string) $content ); }
+function shortcode_atts( $pairs, $atts, $shortcode = '' ) {
+	$out = [];
+	foreach ( $pairs as $name => $default ) {
+		$out[ $name ] = array_key_exists( $name, (array) $atts ) ? $atts[ $name ] : $default;
+	}
+	return $out;
+}
+function get_the_ID() { return $GLOBALS['MOCK_CURRENT_POST'] ?? 0; }
+function get_transient( $k ) { return $GLOBALS['MOCK_TRANSIENTS'][ $k ] ?? false; }
+function set_transient( $k, $v, $ttl = 0 ) { $GLOBALS['MOCK_TRANSIENTS'][ $k ] = $v; return true; }
+function update_option( $k, $v, $autoload = null ) { $GLOBALS['MOCK_OPTIONS'][ $k ] = $v; return true; }
 function get_post( $id ) {
 	$id = (int) $id;
 	if ( ! isset( $GLOBALS['MOCK_POSTS'][ $id ] ) ) { return null; }
@@ -31,11 +51,18 @@ function get_post( $id ) {
 	$p->ID = $id;
 	$p->post_status = $GLOBALS['MOCK_POSTS'][ $id ]['status'];
 	$p->post_type   = $GLOBALS['MOCK_POSTS'][ $id ]['type'];
+	$p->post_name    = $GLOBALS['MOCK_POSTS'][ $id ]['slug'] ?? '';
+	$p->post_content = $GLOBALS['MOCK_POSTS'][ $id ]['content'] ?? '';
 	return $p;
 }
 function pll_get_post_language( $id, $field = 'slug' ) { return $GLOBALS['MOCK_POSTS'][ (int) $id ]['lang'] ?? ''; }
 
-class WP_Post { public $ID; public $post_status; public $post_type; }
+class WP_Post { public $ID; public $post_status; public $post_type; public $post_name = ''; public $post_content = ''; }
+
+/** Puts shortcode text into a post's stored content. */
+function mock_content( int $post_id, string $content ): void {
+	$GLOBALS['MOCK_POSTS'][ $post_id ]['content'] = $content;
+}
 
 /**
  * Hub Manager stand-in. Mirrors the real helpers, including the documented
@@ -285,8 +312,8 @@ function mock_geo( int $post_id, array $levels ): void {
 	$GLOBALS['MOCK_POST_PLACES'][ $post_id ] = $levels;
 }
 
-function mock_post( int $id, string $title, string $lang, array $weights, string $status = 'publish', string $type = 'post' ): void {
-	$GLOBALS['MOCK_POSTS'][ $id ]   = [ 'title' => $title, 'lang' => $lang, 'status' => $status, 'type' => $type ];
+function mock_post( int $id, string $title, string $lang, array $weights, string $status = 'publish', string $type = 'post', string $slug = '' ): void {
+	$GLOBALS['MOCK_POSTS'][ $id ]   = [ 'title' => $title, 'lang' => $lang, 'status' => $status, 'type' => $type, 'slug' => $slug, 'content' => '' ];
 	$GLOBALS['MOCK_WEIGHTS'][ $id ] = [ 'lang' => $lang, 'slugs' => $weights ];
 }
 

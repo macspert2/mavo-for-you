@@ -36,6 +36,7 @@ function makeElement(tag) {
 		get innerHTML() { return ''; },
 		appendChild(child) { this.children.push(child); return child; },
 		setAttribute(key, value) { this.attributes[key] = value; },
+		getAttribute(key) { return key in this.attributes ? this.attributes[key] : null; },
 		addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); },
 		dispatch(type) { (this.listeners[type] || []).forEach((fn) => fn({})); },
 		/** Depth-first search for a rendered node, by class name. */
@@ -197,6 +198,9 @@ async function main() {
 	env.advance(60);
 	env.tick();
 	check('no second request for the same page view', env.fetches.length === 1, `${env.fetches.length} requests`);
+	// A plain after-content placeholder carries no size or level, so the
+	// server's own defaults decide — the pre-shortcode behaviour, unchanged.
+	check('a plain placeholder sends no limit or level', !('limit' in body) && !('geo_level' in body), JSON.stringify(Object.keys(body)));
 	check('the block is rendered into the placeholder', !!env.host.find('mfy'));
 	check('recommendation link carries data-mavo-post-id', env.host.find('mv-tile__link').attributes['data-mavo-post-id'] === 42);
 }
@@ -349,6 +353,43 @@ async function main() {
 	const recentHub = env.host.find('mfy__recent-hub');
 	check('a hub in recently viewed is marked', !!recentHub && recentHub.textContent === 'Guide', recentHub && recentHub.textContent);
 	check('recently-viewed hub keeps a normal crawlable link', !!env.host.find('mfy__recent-link'));
+}
+
+// 10c. On a [geo_related] page the placeholder arrives pre-filled and sized.
+{
+	const env = makeEnvironment({ storage: seededProfile(NOW) });
+	env.host.attributes['data-limit'] = '6';
+	env.host.attributes['data-level'] = 'country';
+	env.host.getAttribute = function (name) { return this.attributes[name] || null; };
+	// The server-rendered impersonal block already occupies the placeholder.
+	env.host.children.push(makeElement('section'));
+	env.host.children[0].className = 'mfy mfy--impersonal';
+
+	env.advance(10);
+	env.tick();
+	await flush();
+
+	const body = env.fetches[0].body;
+	check('the placeholder\'s limit is sent, so the block keeps its size', body.limit === 6, JSON.stringify(body.limit));
+	check('the placeholder\'s geo level is sent', body.geo_level === 'country');
+	check('the impersonal block is replaced, not appended', !env.host.find('mfy--impersonal') && !!env.host.find('mfy'));
+}
+
+// 10d. A request that yields nothing leaves the impersonal block standing.
+{
+	const env = makeEnvironment({
+		storage: seededProfile(NOW),
+		responder: () => ({ show: false, lang: 'fr', recommendations: [], recently_viewed: [] }),
+	});
+	const impersonal = makeElement('section');
+	impersonal.className = 'mfy mfy--impersonal';
+	env.host.children.push(impersonal);
+
+	env.advance(10);
+	env.tick();
+	await flush();
+
+	check('show:false leaves the server-rendered block untouched', !!env.host.find('mfy--impersonal'));
 }
 
 // 11. A failed request leaves the page alone.
