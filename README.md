@@ -61,10 +61,8 @@ cached page   [geo_related] → placeholder + impersonal block   (Swift/Cloudfla
 ```
 
 The shortcode's `limit` and `level` are carried into the personalised request, so the
-section does not resize or re-aim under the reader. `[geo_related_full]` is an alias,
-kept because post content still contains it. `post_id` and `style` are accepted and
-ignored. `geo_tagger_related_posts()` and `geo_tagger_related_posts_full()` survive as
-shims.
+section does not resize or re-aim under the reader. `post_id` and `style` are accepted and
+ignored, and `geo_tagger_related_posts()` survives as a shim.
 
 A post carrying the shortcode never also gets the after-content block — the shortcode's
 position wins, and the hook stands down. If the impersonal ranking finds nothing, the

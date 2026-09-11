@@ -78,8 +78,8 @@ function render_for( int $post_id ): string {
 mock_post( 1, 'Un article sans shortcode', 'fr', [ 'citytrip' => 2 ] );
 mock_post( 2, 'Un article avec shortcode', 'fr', [ 'citytrip' => 2 ] );
 mock_content( 2, "Du texte.\n\n[geo_related]\n\nEncore du texte." );
-mock_post( 3, 'Avec le _full', 'fr', [ 'citytrip' => 2 ] );
-mock_content( 3, '[geo_related_full limit="4"]' );
+mock_post( 3, 'Avec attributs', 'fr', [ 'citytrip' => 2 ] );
+mock_content( 3, '[geo_related level="city" limit="4"]' );
 mock_post( 4, 'Une page éditoriale', 'fr', [], 'publish', 'page', 'a-propos' );
 mock_post( 5, 'Contact', 'fr', [], 'publish', 'page', 'contact' );
 mock_post( 6, 'Brouillon', 'fr', [ 'citytrip' => 2 ], 'draft' );
@@ -97,7 +97,7 @@ check( 'an editorial page gets it too', str_contains( render_for( 4 ), 'id="mavo
 
 // --- 2. The shortcode path: the hook stands down -----------------------------
 check( 'a post with [geo_related] gets nothing from the hook', render_for( 2 ) === '', render_for( 2 ) );
-check( 'a post with [geo_related_full] gets nothing either', render_for( 3 ) === '' );
+check( 'attributes on the shortcode make no difference to that', render_for( 3 ) === '' );
 
 // The shortcode is what places the block on those posts.
 $GLOBALS['MOCK_CURRENT_POST'] = 2;

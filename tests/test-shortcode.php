@@ -99,8 +99,6 @@ check( 'the render hook is told to stand down', MFY_Shortcode::has_rendered( 1 )
 // --- 6. Which posts place it themselves ---------------------------------------
 check( 'a post containing the shortcode is detected', MFY_Shortcode::post_has_shortcode( 1 ) );
 check( 'a post without it is not', ! MFY_Shortcode::post_has_shortcode( 60 ) );
-mock_content( 60, '[geo_related_full]' );
-check( 'the _full alias counts too', MFY_Shortcode::post_has_shortcode( 60 ) );
 mock_content( 60, 'Nothing here about geo_related at all.' );
 check( 'a bare mention in prose does not count', ! MFY_Shortcode::post_has_shortcode( 60 ) );
 

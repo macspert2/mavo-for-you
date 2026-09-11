@@ -21,20 +21,13 @@ defined( 'ABSPATH' ) || exit;
 
 class MFY_Shortcode {
 
-	const TAG      = 'geo_related';
-	const TAG_FULL = 'geo_related_full';
+	const TAG = 'geo_related';
 
 	/** Post IDs whose content has already produced a block this request. */
 	private static array $rendered = [];
 
 	public static function init(): void {
 		add_shortcode( self::TAG, [ __CLASS__, 'render_shortcode' ] );
-
-		// Existing post content still contains [geo_related_full], which used
-		// to stack one section per geographic level. The simplified block has
-		// no levels to stack, so it is an alias — an unregistered shortcode
-		// would render as literal text on every post that uses it.
-		add_shortcode( self::TAG_FULL, [ __CLASS__, 'render_shortcode' ] );
 	}
 
 	/**
@@ -50,8 +43,7 @@ class MFY_Shortcode {
 			return false;
 		}
 
-		return has_shortcode( $post->post_content, self::TAG )
-			|| has_shortcode( $post->post_content, self::TAG_FULL );
+		return has_shortcode( $post->post_content, self::TAG );
 	}
 
 	/**
@@ -232,11 +224,11 @@ class MFY_Shortcode {
 }
 
 /**
- * Back-compat shims for the helpers mavo-geotag-plus exposed.
+ * Back-compat shim for the helper mavo-geotag-plus exposed.
  *
- * Nothing in the theme calls them today, but they were documented as a public
- * API, so they answer rather than fatal. The $level and $limit arguments still
- * mean what they meant; $style no longer does anything.
+ * Nothing in the theme calls it today, but it was documented as a public API,
+ * so it answers rather than fatals. The $level and $limit arguments still mean
+ * what they meant; $style no longer does anything.
  */
 if ( ! function_exists( 'geo_tagger_related_posts' ) ) :
 
@@ -245,10 +237,6 @@ function geo_tagger_related_posts( int $post_id = 0, ?string $level = null, stri
 	$level   = in_array( (string) $level, MFY_Geo::levels(), true ) ? (string) $level : '';
 
 	return $post_id ? MFY_Shortcode::render_block( $post_id, $level, $limit ) : '';
-}
-
-function geo_tagger_related_posts_full( int $post_id = 0, string $style = 'plain', int $limit = 6 ): string {
-	return geo_tagger_related_posts( $post_id, null, $style, $limit );
 }
 
 endif;
