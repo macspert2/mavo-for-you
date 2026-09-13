@@ -1,0 +1,401 @@
+/**
+ * Button styles — a gallery, and a three-tier set for Maman Voyage.
+ *
+ * Three things govern the choices here:
+ *
+ * 1. `input[type="submit"]` cannot have ::before or ::after. Several of this
+ *    site's buttons are inputs — the comment submit, the search submits — so a
+ *    style built on pseudo-elements simply cannot be used on them. Every card
+ *    below says which kind it needs.
+ *
+ * 2. States are shown frozen as well as live. You cannot fake :hover with CSS,
+ *    so each style's declarations are written against both the real pseudo-class
+ *    and an .is-* class, and the strip under each card shows all five at once.
+ *
+ * 3. Nothing may reflow on interaction. A button that changes padding, border
+ *    width or font-weight on hover shifts the text beside it. Movement comes
+ *    from transform, depth from box-shadow, and borders are always present even
+ *    when transparent.
+ */
+
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+
+:root {
+	--mv-blue:      #4e74a5;
+	--mv-blue-deep: #3c5c84;
+	--mv-blue-tint: #eef3f8;
+	--mv-warm:      #886353;
+	--mv-warm-deep: #5c3d2e;
+	--mv-highlight: #a92d87;
+	--mv-cream:     #f7f4ef;
+	--mv-ink:       #3a3a3a;
+	--mv-muted:     #757575;
+	--mv-border:    #e6e6e6;
+
+	--radius: 12px;
+	--shadow: 0 8px 22px rgba(58, 58, 58, 0.08);
+}
+
+/* ── Page furniture ───────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	padding: 0 1.25rem 5rem;
+	background: #fff;
+	color: var(--mv-ink);
+	font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 64rem; margin: 0 auto; }
+
+header.page { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--mv-border); margin-bottom: 2.5rem; }
+h1 { margin: 0 0 .4rem; font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.15; letter-spacing: -.015em; }
+h1 em { font-style: normal; color: var(--mv-blue); }
+.lede { margin: 0; max-width: 46rem; font-size: 1.05rem; color: var(--mv-muted); }
+
+h2 { margin: 3.5rem 0 .35rem; font-size: 1.45rem; letter-spacing: -.01em; }
+h2::after { content: ""; display: block; width: 2.2em; height: 3px; margin-top: .45rem; border-radius: 2px; background: var(--mv-blue); }
+h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
+.section-note { margin: .9rem 0 2rem; max-width: 48rem; color: var(--mv-muted); font-size: .94rem; }
+
+.warning {
+	margin: 1.5rem 0 0;
+	padding: 1rem 1.2rem;
+	border-left: 3px solid var(--mv-highlight);
+	background: #fdf0f7;
+	font-size: .93rem;
+}
+.warning strong { color: var(--mv-highlight); }
+
+/* ── Gallery layout ───────────────────────────────────────────────────────── */
+
+.gallery { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 23rem), 1fr)); }
+
+.card {
+	padding: 1.15rem 1.25rem 1.1rem;
+	background: #fff;
+	border: 1px solid var(--mv-border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+.card > p { margin: .1rem 0 .9rem; font-size: .88rem; color: var(--mv-muted); }
+
+.live { padding: 1rem 0 1.1rem; text-align: center; }
+
+/* The frozen state strip. */
+.states {
+	display: grid;
+	grid-template-columns: repeat(5, 1fr);
+	gap: .35rem;
+	padding-top: .9rem;
+	border-top: 1px dashed var(--mv-border);
+	text-align: center;
+}
+.states figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: .3rem; }
+.states figcaption { font-size: .62rem; letter-spacing: .04em; text-transform: uppercase; color: var(--mv-muted); }
+.states .btn { padding: 5px 10px; font-size: .68rem; border-radius: 999px; }
+.states .b-texte.btn { padding: 5px 2px; }
+
+.flags { display: flex; flex-wrap: wrap; gap: .3rem; margin: .9rem 0 0; padding: 0; list-style: none; }
+.flags li { padding: .15rem .5rem; border-radius: 999px; font-size: .66rem; letter-spacing: .02em; background: var(--mv-cream); color: var(--mv-warm-deep); }
+.flags li.ok   { background: var(--mv-blue-tint); color: var(--mv-blue-deep); }
+.flags li.warn { background: #fdf0f7; color: var(--mv-highlight); }
+
+/* ── Shared button base ───────────────────────────────────────────────────── */
+
+/*
+ * A border is declared even where it is invisible, and padding never changes
+ * between states — both so nothing beside the button moves when it is used.
+ */
+.btn {
+	display: inline-block;
+	padding: 10px 24px;
+	border: 2px solid transparent;
+	border-radius: 999px;
+	background: none;
+	color: inherit;
+	font: inherit;
+	font-weight: 600;
+	line-height: 1.2;
+	text-decoration: none;
+	cursor: pointer;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), filter .2s, box-shadow .2s,
+	            background-color .2s, background-size .3s, border-color .2s, color .2s;
+}
+
+/* One disabled treatment for all of them, so the set stays coherent. */
+.btn:disabled,
+.btn.is-disabled {
+	cursor: not-allowed;
+	opacity: .45;
+	filter: grayscale(.5);
+	transform: none !important;
+	box-shadow: none !important;
+}
+
+.btn:focus-visible,
+.btn.is-focus {
+	outline: 2px solid var(--mv-blue);
+	outline-offset: 3px;
+}
+
+/* =========================================================================
+   THE GALLERY
+   ========================================================================= */
+
+/* 1 ── Tampon: the one already on the comment button. */
+.b-tampon { background-color: var(--mv-blue); color: #fff; }
+.b-tampon:hover, .b-tampon.is-hover { box-shadow: 0 12px 30px rgba(58,58,58,.12); transform: rotate(-1.2deg); filter: brightness(.96); }
+.b-tampon:active, .b-tampon.is-active {
+	transform: rotate(.4deg) scale(.98);
+	filter: brightness(.92);
+	outline: 5px dashed color-mix(in srgb, currentColor 60%, transparent);
+	outline-offset: -5px;
+}
+
+/* 2 ── Élévation: depth only. The quietest thing that still feels physical. */
+.b-elevation { background-color: var(--mv-warm); color: #fff; box-shadow: 0 2px 6px rgba(58,58,58,.18); }
+.b-elevation:hover, .b-elevation.is-hover { box-shadow: 0 10px 24px rgba(58,58,58,.24); transform: translateY(-2px); }
+.b-elevation:active, .b-elevation.is-active { box-shadow: 0 1px 3px rgba(58,58,58,.3); transform: translateY(1px); }
+
+/* 3 ── Encre: the fill floods up from the baseline. */
+.b-ink {
+	border-color: var(--mv-blue);
+	color: var(--mv-blue);
+	background-image: linear-gradient(var(--mv-blue), var(--mv-blue));
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	background-size: 100% 0;
+}
+.b-ink:hover, .b-ink.is-hover { color: #fff; background-size: 100% 100%; }
+.b-ink:active, .b-ink.is-active { color: #fff; background-size: 100% 100%; filter: brightness(.9); transform: scale(.98); }
+
+/* 4 ── Fantôme: an outline that commits. */
+.b-ghost { border-color: var(--mv-warm); color: var(--mv-warm-deep); background-color: transparent; }
+.b-ghost:hover, .b-ghost.is-hover { background-color: var(--mv-warm); border-color: var(--mv-warm); color: #fff; }
+.b-ghost:active, .b-ghost.is-active { background-color: var(--mv-warm-deep); border-color: var(--mv-warm-deep); color: #fff; transform: scale(.98); }
+
+/* 5 ── Aurore: the gradient travels rather than the button. */
+.b-aurore {
+	color: #fff;
+	background-image: linear-gradient(100deg, var(--mv-blue) 0%, var(--mv-highlight) 50%, var(--mv-blue) 100%);
+	background-size: 220% 100%;
+	background-position: 0% 0;
+}
+.b-aurore:hover, .b-aurore.is-hover { background-position: 100% 0; }
+.b-aurore:active, .b-aurore.is-active { background-position: 100% 0; transform: scale(.98); filter: brightness(.93); }
+
+/* 6 ── Papier: two sheets of card, pressed flat on click. */
+.b-papier { background-color: var(--mv-cream); color: var(--mv-warm-deep); border-color: var(--mv-warm-deep); box-shadow: 3px 3px 0 var(--mv-warm-deep); }
+.b-papier:hover, .b-papier.is-hover { box-shadow: 5px 5px 0 var(--mv-warm-deep); transform: translate(-2px, -2px); }
+.b-papier:active, .b-papier.is-active { box-shadow: 1px 1px 0 var(--mv-warm-deep); transform: translate(2px, 2px); }
+
+/* 7 ── Timbre: perforated at rest, inked on press. */
+.b-timbre { background-color: #fff; color: var(--mv-warm-deep); border: 2px dashed var(--mv-warm); }
+.b-timbre:hover, .b-timbre.is-hover { border-color: var(--mv-warm-deep); background-color: var(--mv-cream); transform: rotate(-1deg); }
+.b-timbre:active, .b-timbre.is-active {
+	background-color: var(--mv-cream);
+	transform: rotate(.5deg) scale(.98);
+	outline: 4px dashed color-mix(in srgb, var(--mv-warm-deep) 55%, transparent);
+	outline-offset: -4px;
+}
+
+/* 8 ── Texte: tertiary, and it speaks the same language as a content link. */
+.b-texte {
+	padding-left: 2px; padding-right: 2px;
+	color: var(--mv-blue);
+	background-image: linear-gradient(var(--mv-warm), var(--mv-warm));
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	background-size: 0% 2px;
+}
+.b-texte:hover, .b-texte.is-hover { color: var(--mv-warm-deep); background-size: 100% 2px; }
+.b-texte:active, .b-texte.is-active { color: var(--mv-highlight); background-size: 100% 2px; }
+
+/* 9 ── Flèche: the arrow arrives. Needs ::after — <button> or <a> only.
+       Space for the arrow is reserved in the resting padding, so nothing
+       moves when it appears. */
+.b-fleche { position: relative; padding-right: 44px; background-color: var(--mv-blue); color: #fff; }
+.b-fleche::after {
+	content: "→";
+	position: absolute;
+	right: 20px; top: 50%;
+	transform: translate(-6px, -50%);
+	opacity: 0;
+	transition: opacity .2s, transform .25s cubic-bezier(.22, 1, .36, 1);
+}
+.b-fleche:hover, .b-fleche.is-hover { filter: brightness(.95); }
+.b-fleche:hover::after, .b-fleche.is-hover::after { opacity: 1; transform: translate(0, -50%); }
+.b-fleche:active, .b-fleche.is-active { transform: scale(.98); }
+.b-fleche:active::after, .b-fleche.is-active::after { opacity: 1; transform: translate(3px, -50%); }
+
+/* 10 ── Billet: a torn ticket. Two pseudo-elements punch the ends, which means
+        it only works where the page background behind it is known. */
+.b-billet {
+	position: relative;
+	border-radius: 4px;
+	background-color: var(--mv-blue-tint);
+	color: var(--mv-blue-deep);
+	border-color: var(--mv-blue);
+	overflow: hidden;
+}
+.b-billet::before,
+.b-billet::after {
+	content: "";
+	position: absolute;
+	top: 50%;
+	width: 14px; height: 14px;
+	border-radius: 50%;
+	background: #fff;
+	transform: translateY(-50%);
+}
+.b-billet::before { left: -8px; }
+.b-billet::after  { right: -8px; }
+.b-billet:hover, .b-billet.is-hover { background-color: #fff; transform: translateY(-2px); box-shadow: 0 8px 18px rgba(58,58,58,.14); }
+.b-billet:active, .b-billet.is-active { transform: translateY(0) scale(.98); background-color: var(--mv-blue-tint); }
+
+
+/* 11 ── Billet tamponné: the whole idea at once — a ticket, notched at both
+        ends, that tilts like a stamp, grows an arrow, and gets cancelled with
+        a perforation ring on click.
+
+        The notches are painted as background gradients, not pseudo-elements.
+        Billet's original version used ::before and ::after for them, which
+        would have left nothing for Flèche's arrow — an element has only two.
+        Painting them frees both, at the cost that the notch colour has to
+        match whatever is behind the button: set --billet-bg per context.
+
+        Note also that this variant darkens with background-color rather than
+        filter: brightness(). A filter would darken the notches too, and they
+        would stop matching the page behind them on hover. */
+.b-billet-tampon {
+	position: relative;
+	--billet-bg: #fff;
+	--notch: 7px;
+	padding-right: 44px;
+	border-radius: 4px;
+	border-color: transparent;
+	background-color: var(--mv-blue);
+	color: #fff;
+	background-image:
+		radial-gradient(circle at 0 50%, var(--billet-bg) var(--notch), transparent calc(var(--notch) + .5px)),
+		radial-gradient(circle at 100% 50%, var(--billet-bg) var(--notch), transparent calc(var(--notch) + .5px));
+	background-repeat: no-repeat;
+}
+
+.b-billet-tampon::after {
+	content: "→";
+	position: absolute;
+	right: 22px; top: 50%;
+	transform: translate(-6px, -50%);
+	opacity: 0;
+	transition: opacity .2s, transform .25s cubic-bezier(.22, 1, .36, 1);
+}
+
+.b-billet-tampon:hover, .b-billet-tampon.is-hover {
+	background-color: var(--mv-blue-deep);
+	transform: rotate(-1.2deg);
+	box-shadow: 0 10px 26px rgba(58, 58, 58, .18);
+}
+.b-billet-tampon:hover::after, .b-billet-tampon.is-hover::after { opacity: 1; transform: translate(0, -50%); }
+
+.b-billet-tampon:active, .b-billet-tampon.is-active {
+	background-color: var(--mv-blue-deep);
+	transform: rotate(.4deg) scale(.98);
+	box-shadow: 0 2px 6px rgba(58, 58, 58, .2);
+	outline: 4px dashed color-mix(in srgb, currentColor 60%, transparent);
+	outline-offset: -4px;
+}
+.b-billet-tampon:active::after, .b-billet-tampon.is-active::after { opacity: 1; transform: translate(3px, -50%); }
+
+/* 12 ── The same thing, dialled back: no arrow, a smaller tilt, and the
+        perforation only on click. Four ideas at once is a lot for a button
+        that appears more than twice on a page. */
+.b-billet-calme {
+	--billet-bg: #fff;
+	--notch: 6px;
+	border-radius: 4px;
+	border-color: transparent;
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 45%, transparent);
+	background-image:
+		radial-gradient(circle at 0 50%, var(--billet-bg) var(--notch), transparent calc(var(--notch) + .5px)),
+		radial-gradient(circle at 100% 50%, var(--billet-bg) var(--notch), transparent calc(var(--notch) + .5px));
+	background-repeat: no-repeat;
+}
+.b-billet-calme:hover, .b-billet-calme.is-hover { background-color: #fff; transform: rotate(-.7deg); box-shadow: inset 0 0 0 2px var(--mv-warm), 0 8px 18px rgba(58,58,58,.12); }
+.b-billet-calme:active, .b-billet-calme.is-active {
+	transform: rotate(.3deg) scale(.985);
+	outline: 4px dashed color-mix(in srgb, var(--mv-warm-deep) 55%, transparent);
+	outline-offset: -4px;
+}
+
+/* The frozen swatches are far too small for a 7px notch or a 44px arrow gap. */
+.states .b-billet-tampon,
+.states .b-billet-calme { --notch: 3px; padding-right: 10px; border-radius: 3px; }
+.states .b-billet-tampon::after { display: none; }
+
+/* On a cream panel the notches have to be cream too, or they read as blobs. */
+.demo .b-billet-tampon,
+.demo .b-billet-calme { --billet-bg: var(--mv-cream); }
+.demo.on-white .b-billet-tampon,
+.demo.on-white .b-billet-calme { --billet-bg: #fff; }
+
+/* =========================================================================
+   A SET FOR MAMAN VOYAGE
+   ========================================================================= */
+
+.proposal { margin: 0 0 1.5rem; border: 1px solid var(--mv-border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
+.proposal > header { padding: 1.15rem 1.35rem .9rem; border-bottom: 1px solid var(--mv-border); }
+.proposal > header p { margin: .3rem 0 0; color: var(--mv-muted); font-size: .9rem; }
+.proposal .demo { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1.6rem 1.35rem; background: var(--mv-cream); }
+.proposal .demo.on-white { background: #fff; }
+.proposal .demo .full { flex: 1 1 100%; }
+
+pre {
+	margin: 0; padding: 1.1rem 1.35rem;
+	background: #1e232b; color: #d7dee8;
+	font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	overflow-x: auto;
+}
+pre .c { color: #7f8ea3; font-style: italic; }
+pre .p { color: #9ecbff; }
+pre .v { color: #f0b9a0; }
+
+/* Primary = the shipped tampon. Secondary = ghost in warm. Tertiary = texte. */
+.mv-btn-1 { background-color: var(--mv-blue); color: #fff; }
+.mv-btn-1:hover { box-shadow: 0 12px 30px rgba(58,58,58,.12); transform: rotate(-1.2deg); filter: brightness(.96); }
+.mv-btn-1:active { transform: rotate(.4deg) scale(.98); filter: brightness(.92); outline: 5px dashed color-mix(in srgb, currentColor 60%, transparent); outline-offset: -5px; }
+
+.mv-btn-2 { border-color: var(--mv-warm); color: var(--mv-warm-deep); }
+.mv-btn-2:hover { background-color: var(--mv-warm); border-color: var(--mv-warm); color: #fff; transform: rotate(-1deg); }
+.mv-btn-2:active { background-color: var(--mv-warm-deep); border-color: var(--mv-warm-deep); color: #fff; transform: rotate(.4deg) scale(.98); }
+
+.mv-btn-3 {
+	padding-left: 2px; padding-right: 2px; color: var(--mv-blue);
+	background-image: linear-gradient(var(--mv-warm), var(--mv-warm));
+	background-repeat: no-repeat; background-position: 0 100%; background-size: 0% 2px;
+}
+.mv-btn-3:hover { color: var(--mv-warm-deep); background-size: 100% 2px; }
+.mv-btn-3:active { color: var(--mv-highlight); }
+
+/* Full width: no rotation. At 1.2° a 600px button's corners travel ~6px. */
+.mv-btn-full { display: block; width: 100%; text-align: center; }
+.mv-btn-full:hover { transform: translateY(-2px); }
+.mv-btn-full:active { transform: translateY(0) scale(.995); }
+
+/* ── Notes ────────────────────────────────────────────────────────────────── */
+
+.note { margin: 1.2rem 0 0; padding: 1.1rem 1.25rem; background: var(--mv-cream); border-radius: var(--radius); font-size: .92rem; }
+.note h3 { margin-bottom: .4rem; }
+.note p:last-child { margin-bottom: 0; }
+.note code { padding: .08em .35em; background: rgba(255,255,255,.75); border-radius: 3px; font: .88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+@media (prefers-reduced-motion: reduce) {
+	.btn { transition: background-color .2s, color .2s, border-color .2s, box-shadow .2s; }
+	.btn:hover, .btn:active, .btn.is-hover, .btn.is-active { transform: none; }
+}

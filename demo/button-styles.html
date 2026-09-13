@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Styles de boutons — Maman Voyage</title>
+<link rel="stylesheet" href="button-styles.css">
+</head>
+<body>
+<div class="wrap">
+
+<header class="page">
+	<h1>Styles de boutons — <em>dix idées et un jeu complet</em></h1>
+	<p class="lede">
+		Each card shows a live button and, beneath it, the five states frozen side by side —
+		rest, hover, active, focus, disabled — because you cannot fake <code>:hover</code> in
+		CSS and hunting for each state one at a time is no way to judge a set.
+	</p>
+
+	<div class="warning">
+		<strong>The constraint that rules out half the internet's button styles:</strong>
+		<code>input[type="submit"]</code> cannot have <code>::before</code> or
+		<code>::after</code>. Several of this site's buttons are inputs — the comment submit,
+		the search submits — so anything built on a pseudo-element is unusable there, however
+		nice it looks. Every card says which markup it needs. Eight of the ten work anywhere.
+	</div>
+</header>
+
+<h2>La galerie</h2>
+<p class="section-note">
+	Nothing here reflows on interaction: movement comes from <code>transform</code>, depth from
+	<code>box-shadow</code>, and borders are declared at rest even when transparent, so a button
+	that gains one on hover does not shove its neighbours sideways.
+</p>
+
+<div class="gallery">
+	<div class="card">
+		<h3>1 · Tampon</h3>
+		<p>Shipped — the comment submit and every .mv-button.</p>
+		<div class="live"><button type="button" class="btn b-tampon">Publier le commentaire</button></div>
+		<div class="states">
+				<figure><span class="btn b-tampon">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-tampon is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-tampon is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-tampon is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-tampon is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">in use</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>2 · Élévation</h3>
+		<p>Depth only. The quietest thing that still feels physical.</p>
+		<div class="live"><button type="button" class="btn b-elevation">Réserver</button></div>
+		<div class="states">
+				<figure><span class="btn b-elevation">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-elevation is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-elevation is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-elevation is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-elevation is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>3 · Encre</h3>
+		<p>The fill floods up from the baseline.</p>
+		<div class="live"><button type="button" class="btn b-ink">Voir l'itinéraire</button></div>
+		<div class="states">
+				<figure><span class="btn b-ink">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-ink is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-ink is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-ink is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-ink is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>4 · Fantôme</h3>
+		<p>An outline that commits on hover.</p>
+		<div class="live"><button type="button" class="btn b-ghost">Toutes les destinations</button></div>
+		<div class="states">
+				<figure><span class="btn b-ghost">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-ghost is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-ghost is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-ghost is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-ghost is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>5 · Aurore</h3>
+		<p>The gradient travels; the button stays put.</p>
+		<div class="live"><button type="button" class="btn b-aurore">Découvrir</button></div>
+		<div class="states">
+				<figure><span class="btn b-aurore">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-aurore is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-aurore is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-aurore is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-aurore is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>6 · Papier</h3>
+		<p>Two sheets of card, pressed flat on click.</p>
+		<div class="live"><button type="button" class="btn b-papier">Télécharger la liste</button></div>
+		<div class="states">
+				<figure><span class="btn b-papier">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-papier is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-papier is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-papier is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-papier is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">playful</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>7 · Timbre</h3>
+		<p>Perforated at rest, inked on press.</p>
+		<div class="live"><button type="button" class="btn b-timbre">Notre guide de Londres</button></div>
+		<div class="states">
+				<figure><span class="btn b-timbre">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-timbre is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-timbre is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-timbre is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-timbre is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>8 · Texte</h3>
+		<p>Tertiary — speaks the same language as a content link.</p>
+		<div class="live"><button type="button" class="btn b-texte">Lire la suite</button></div>
+		<div class="states">
+				<figure><span class="btn b-texte">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-texte is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-texte is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-texte is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-texte is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">tertiary</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>9 · Flèche</h3>
+		<p>The arrow arrives. Space for it is reserved at rest.</p>
+		<div class="live"><a href="#" class="btn b-fleche">Continuer</a></div>
+		<div class="states">
+				<figure><span class="btn b-fleche">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-fleche is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-fleche is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-fleche is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-fleche is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="warn">needs ::after — &lt;button&gt; / &lt;a&gt;</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>10 · Billet</h3>
+		<p>A torn ticket. The notches must match the page behind them.</p>
+		<div class="live"><a href="#" class="btn b-billet">Préparer le voyage</a></div>
+		<div class="states">
+				<figure><span class="btn b-billet">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-billet is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-billet is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-billet is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-billet is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="warn">needs ::before — &lt;button&gt; / &lt;a&gt;</li><li class="warn">background-dependent</li></ul>
+	</div>
+
+
+	<div class="card">
+		<h3>11 · Billet tamponné</h3>
+		<p>All four at once: ticket notches, the stamp tilt, an arrow, and a perforation ring on click.</p>
+		<div class="live"><a href="#" class="btn b-billet-tampon">Préparer le voyage</a></div>
+		<div class="states">
+				<figure><span class="btn b-billet-tampon">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-billet-tampon is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-billet-tampon is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-billet-tampon is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-billet-tampon is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="warn">arrow needs ::after — &lt;button&gt; / &lt;a&gt;</li><li class="ok">no reflow</li><li class="warn">background-dependent</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>12 · Billet calme</h3>
+		<p>The same, dialled back — no arrow, half the tilt, perforation only on click.</p>
+		<div class="live"><button type="button" class="btn b-billet-calme">Notre guide de Londres</button></div>
+		<div class="states">
+				<figure><span class="btn b-billet-calme">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-billet-calme is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-billet-calme is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-billet-calme is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-billet-calme is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="warn">background-dependent</li></ul>
+	</div>
+</div>
+
+<h2>Un jeu pour Maman Voyage</h2>
+<p class="section-note">
+	Three tiers, one motion language. The primary is what is already live; the other two are
+	built from the same palette and the same stamp, so a row containing all three reads as one
+	family rather than three decisions.
+</p>
+
+<article class="proposal">
+	<header>
+		<h3>Primaire · Secondaire · Tertiaire</h3>
+		<p>Blue fill for the one action that matters, a warm outline for the alternative, and a
+		text button for everything that should not compete. Only the first two rotate.</p>
+	</header>
+	<div class="demo">
+		<button type="button" class="btn mv-btn-1">Publier le commentaire</button>
+		<button type="button" class="btn mv-btn-2">Toutes nos destinations</button>
+		<button type="button" class="btn mv-btn-3">Lire la suite</button>
+	</div>
+	<div class="demo on-white">
+		<button type="button" class="btn mv-btn-1 mv-btn-full">S'abonner à la newsletter</button>
+		<p class="full" style="margin:0;font-size:.86rem;color:var(--mv-muted)">
+			Full width, and therefore no rotation: at 1.2° the corners of a 600px button travel
+			about six pixels and it reads as broken rather than stamped. It lifts instead.
+		</p>
+	</div>
+	<div class="demo on-white">
+		<button type="button" class="btn mv-btn-1" disabled>Envoi en cours…</button>
+		<button type="button" class="btn mv-btn-2" disabled>Indisponible</button>
+		<p class="full" style="margin:0;font-size:.86rem;color:var(--mv-muted)">
+			Disabled is one treatment for the whole set — greyed, desaturated, and with movement
+			switched off entirely, so a dead button cannot pretend to respond.
+		</p>
+	</div>
+<pre><span class="c">/* Tier 1 — the one already live */</span>
+.mv-btn-1 { <span class="p">background-color</span>: <span class="v">#4e74a5</span>; <span class="p">color</span>: <span class="v">#fff</span>; }
+.mv-btn-1<span class="p">:hover</span>  { <span class="p">transform</span>: rotate(-1.2deg); <span class="p">filter</span>: brightness(.96); }
+.mv-btn-1<span class="p">:active</span> { <span class="p">transform</span>: rotate(.4deg) scale(.98);
+                   <span class="p">outline</span>: 5px dashed color-mix(in srgb, currentColor 60%, transparent);
+                   <span class="p">outline-offset</span>: -5px; }
+
+<span class="c">/* Tier 2 — the alternative, never the same weight as tier 1 */</span>
+.mv-btn-2 { <span class="p">border</span>: 2px solid <span class="v">#886353</span>; <span class="p">color</span>: <span class="v">#5c3d2e</span>; }
+.mv-btn-2<span class="p">:hover</span>  { <span class="p">background-color</span>: <span class="v">#886353</span>; <span class="p">color</span>: <span class="v">#fff</span>; <span class="p">transform</span>: rotate(-1deg); }
+
+<span class="c">/* Tier 3 — a link that happens to be a button */</span>
+.mv-btn-3 { <span class="p">color</span>: <span class="v">#4e74a5</span>; <span class="p">background</span>: linear-gradient(<span class="v">#886353</span>,<span class="v">#886353</span>) 0 100% / 0% 2px no-repeat; }
+.mv-btn-3<span class="p">:hover</span>  { <span class="p">color</span>: <span class="v">#5c3d2e</span>; <span class="p">background-size</span>: 100% 2px; }</pre>
+</article>
+
+<h2>Trois choses à savoir</h2>
+
+<div class="note">
+	<h3>Deux pseudo-éléments, trois idées</h3>
+	<p>
+		Cards 11 and 12 exist because the obvious way to build them does not work. Billet used
+		<code>::before</code> and <code>::after</code> for its two notches, and Flèche needs
+		<code>::after</code> for its arrow — and an element has only two pseudo-elements. So the
+		notches are painted as <code>radial-gradient</code> backgrounds instead, which frees both.
+	</p>
+	<p>
+		Card 11 is still <code>&lt;button&gt;</code>-only, because the arrow itself needs
+		<code>::after</code>. Card 12 drops the arrow and is therefore the one that can go on an
+		<code>input[type="submit"]</code> — the comment submit, the search submits — notches,
+		tilt, perforation and all.
+	</p>
+	<p>
+		The cost is that a painted notch is opaque: it has to be the colour of whatever sits
+		behind the button, set through <code>--billet-bg</code>. Get it wrong and the notches read
+		as two pale blobs rather than holes. That is also why this variant darkens with
+		<code>background-color</code> and not <code>filter: brightness()</code> — a filter would
+		darken the notches too, and they would stop matching the page on hover.
+	</p>
+</div>
+
+<div class="note">
+	<h3>Pourquoi la rotation dépend de la largeur</h3>
+	<p>
+		A rotation pivots about the centre, so each edge moves by half the width times the sine
+		of the angle. At 1.2° that is about 1.6px on a 150px button — a tilt — and about 6px on
+		a 600px one, which reads as a mistake. Rotate small buttons; lift wide ones. That is the
+		whole reason <code>.mv-stamp--press</code> exists.
+	</p>
+</div>
+
+<div class="note">
+	<h3>Pourquoi <code>filter</code> plutôt qu'une couleur</h3>
+	<p>
+		<code>filter: brightness(.96)</code> darkens whatever background it finds, so one rule
+		works on a blue button, a white one and a warm outline alike. Naming a hover colour
+		instead would mean naming one per variant, and every new variant would need another.
+		The cost is that it darkens the label too, which at these values is imperceptible and
+		arguably right — ink presses harder.
+	</p>
+</div>
+
+<div class="note">
+	<h3>L'état désactivé n'est pas optionnel</h3>
+	<p>
+		A disabled button that still lifts, tilts and brightens on hover is lying about being
+		clickable. The base here switches movement off with <code>transform: none !important</code>
+		— one of the few places that keyword earns its place, since it has to beat every
+		variant's own hover rule at once.
+	</p>
+</div>
+
+</div>
+</body>
+</html>

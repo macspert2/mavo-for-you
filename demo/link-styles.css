@@ -1,0 +1,507 @@
+/**
+ * Link styles — a gallery, and three proposals for Maman Voyage.
+ *
+ * Two rules govern everything here:
+ *
+ * 1. LVHA. :link, :visited, :hover, :active must be written in that order or
+ *    they cancel each other out — they all have the same specificity, so the
+ *    last one wins. (LoVe HAte.) :focus-visible goes last of all.
+ *
+ * 2. :visited is a privacy boundary, not a style hook. A browser will only
+ *    honour colour-family properties on it — color, background-color,
+ *    border-*-color, outline-color, column-rule-color, text-decoration-color,
+ *    text-emphasis-color, and SVG fill/stroke — and it ignores the alpha
+ *    channel, so rgba() there silently renders opaque. getComputedStyle lies
+ *    about it too. Anything richer than a colour change has to come from a
+ *    class applied by script.
+ *
+ * Every style below is marked for whether it moves the text around it. A
+ * treatment that reflows a paragraph is unusable for anything applied after
+ * page load, which includes both :visited-like marking and our own
+ * .mfy-read-link.
+ */
+
+/* ── Palette ──────────────────────────────────────────────────────────────── */
+
+:root {
+	--mv-blue:       #4e74a5;
+	--mv-blue-deep:  #3c5c84;
+	--mv-blue-tint:  #eef3f8;
+	--mv-warm:       #886353;
+	--mv-warm-deep:  #5c3d2e;
+	--mv-highlight:  #a92d87;
+	--mv-cream:      #f7f4ef;
+	--mv-ink:        #3a3a3a;
+	--mv-muted:      #757575;
+	--mv-border:     #e6e6e6;
+
+	--radius: 12px;
+	--shadow: 0 8px 22px rgba(58, 58, 58, 0.08);
+}
+
+/* ── Page furniture ───────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	padding: 0 1.25rem 5rem;
+	background: #fff;
+	color: var(--mv-ink);
+	font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 62rem; margin: 0 auto; }
+
+header.page {
+	padding: 3.5rem 0 2rem;
+	border-bottom: 1px solid var(--mv-border);
+	margin-bottom: 2.5rem;
+}
+
+h1 {
+	margin: 0 0 0.4rem;
+	font-size: clamp(1.9rem, 4vw, 2.6rem);
+	line-height: 1.15;
+	letter-spacing: -0.015em;
+}
+
+h1 em { font-style: normal; color: var(--mv-blue); }
+
+.lede {
+	margin: 0;
+	max-width: 46rem;
+	font-size: 1.05rem;
+	color: var(--mv-muted);
+}
+
+h2 {
+	margin: 3.5rem 0 0.35rem;
+	font-size: 1.45rem;
+	letter-spacing: -0.01em;
+}
+
+h2::after {
+	content: "";
+	display: block;
+	width: 2.2em;
+	height: 3px;
+	margin-top: 0.45rem;
+	border-radius: 2px;
+	background: var(--mv-blue);
+}
+
+h3 { margin: 0 0 0.25rem; font-size: 1.05rem; }
+
+.section-note {
+	margin: 0.9rem 0 2rem;
+	max-width: 46rem;
+	color: var(--mv-muted);
+	font-size: 0.94rem;
+}
+
+.swatches { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1.5rem 0 0; padding: 0; list-style: none; }
+
+.swatches li {
+	display: flex; align-items: center; gap: 0.45rem;
+	padding: 0.3rem 0.7rem 0.3rem 0.35rem;
+	border: 1px solid var(--mv-border); border-radius: 999px;
+	font-size: 0.76rem; color: var(--mv-muted);
+}
+
+.swatches i { width: 1rem; height: 1rem; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+
+/* ── The visited simulator ────────────────────────────────────────────────── */
+
+/*
+ * :visited only fires for URLs actually in your history, which makes a demo
+ * page useless for judging it. This checkbox mirrors every visited rule onto
+ * the unvisited links via :has(), so both states are comparable side by side.
+ * No script — the toggle is the checkbox itself.
+ */
+.sim-toggle {
+	position: sticky; top: 0; z-index: 10;
+	display: flex; align-items: center; gap: 0.6rem;
+	margin: 0 -1.25rem; padding: 0.7rem 1.25rem;
+	background: rgba(255, 255, 255, 0.92);
+	backdrop-filter: blur(8px);
+	border-bottom: 1px solid var(--mv-border);
+	font-size: 0.86rem;
+}
+
+.sim-toggle label { cursor: pointer; user-select: none; }
+.sim-toggle .hint { color: var(--mv-muted); font-size: 0.8rem; }
+
+/* ── Gallery layout ───────────────────────────────────────────────────────── */
+
+.gallery { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
+
+.card {
+	padding: 1.15rem 1.25rem 1rem;
+	background: #fff;
+	border: 1px solid var(--mv-border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+}
+
+.card p { margin: 0.55rem 0 0.9rem; font-size: 0.95rem; }
+
+.flags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
+
+.flags li {
+	padding: 0.15rem 0.5rem;
+	border-radius: 999px;
+	font-size: 0.68rem; letter-spacing: 0.02em;
+	background: var(--mv-cream); color: var(--mv-warm-deep);
+}
+
+.flags li.warn { background: #fdf0f7; color: var(--mv-highlight); }
+.flags li.ok   { background: var(--mv-blue-tint); color: var(--mv-blue-deep); }
+
+/* =========================================================================
+   THE GALLERY
+   Each style sets :link, :visited, :hover, :active in that order.
+   ========================================================================= */
+
+.card a { color: var(--mv-blue); }
+
+/* 1 ── Ligne d'horizon: a second underline wipes across on hover. */
+.s-horizon a {
+	text-decoration: none;
+	background-image:
+		linear-gradient(var(--mv-warm), var(--mv-warm)),
+		linear-gradient(color-mix(in srgb, var(--mv-blue) 35%, transparent), color-mix(in srgb, var(--mv-blue) 35%, transparent));
+	background-size: 0% 2px, 100% 1px;
+	background-position: 0 100%, 0 100%;
+	background-repeat: no-repeat;
+	transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s;
+}
+.s-horizon a:visited,
+body:has(#sim:checked) .s-horizon a { color: var(--mv-warm-deep); }
+.s-horizon a:hover { color: var(--mv-warm-deep); background-size: 100% 2px, 100% 1px; }
+.s-horizon a:active { color: var(--mv-highlight); }
+
+/* 2 ── Tracé: a dashed route that solidifies, like a line drawn on a map. */
+.s-route a {
+	text-decoration: underline dashed var(--mv-blue);
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 0.25em;
+	transition: text-decoration-color 0.25s, color 0.25s;
+}
+.s-route a:visited,
+body:has(#sim:checked) .s-route a { color: var(--mv-muted); text-decoration-color: var(--mv-muted); }
+.s-route a:hover { color: var(--mv-warm-deep); text-decoration-style: solid; text-decoration-color: var(--mv-warm); }
+.s-route a:active { text-decoration-color: var(--mv-highlight); }
+
+/* 3 ── Surligneur: a marker sweeps up behind the words. */
+.s-marker a {
+	position: relative;
+	text-decoration: none;
+	background-image: linear-gradient(color-mix(in srgb, var(--mv-highlight) 18%, transparent), color-mix(in srgb, var(--mv-highlight) 18%, transparent));
+	background-repeat: no-repeat;
+	background-position: 0 88%;
+	background-size: 100% 0.1em;
+	transition: background-size 0.28s ease, color 0.2s;
+}
+.s-marker a:visited,
+body:has(#sim:checked) .s-marker a { color: var(--mv-warm-deep); }
+.s-marker a:hover { background-size: 100% 0.95em; }
+.s-marker a:active { background-size: 100% 1.1em; }
+
+/* 4 ── Encre: the colour bleeds up from the baseline and inverts the text. */
+.s-ink a {
+	text-decoration: none;
+	padding: 0 0.15em;
+	background-image: linear-gradient(var(--mv-blue), var(--mv-blue));
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	background-size: 100% 0;
+	transition: background-size 0.3s ease, color 0.3s ease;
+}
+.s-ink a:visited,
+body:has(#sim:checked) .s-ink a { color: var(--mv-warm); }
+.s-ink a:hover { color: #fff; background-size: 100% 100%; }
+.s-ink a:active { background-image: linear-gradient(var(--mv-highlight), var(--mv-highlight)); }
+
+/* 5 ── Tampon: a passport stamp lands around the word, slightly askew.
+       Absolutely positioned, so the paragraph never moves — but it does
+       overlap the line above on tight leading. */
+.s-stamp a {
+	position: relative;
+	text-decoration: none;
+	transition: color 0.2s;
+}
+.s-stamp a::after {
+	content: "";
+	position: absolute;
+	inset: -0.35em -0.5em;
+	border: 2px dashed var(--mv-warm);
+	border-radius: 3px;
+	transform: rotate(-3deg) scale(0.85);
+	opacity: 0;
+	transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.8, 0.64, 1);
+	pointer-events: none;
+}
+.s-stamp a:visited,
+body:has(#sim:checked) .s-stamp a { color: var(--mv-warm-deep); }
+.s-stamp a:hover { color: var(--mv-warm-deep); }
+.s-stamp a:hover::after { opacity: 1; transform: rotate(-3deg) scale(1); }
+.s-stamp a:active::after { transform: rotate(1deg) scale(0.97); border-color: var(--mv-highlight); }
+
+/* 6 ── Vague: the underline ripples. Pure decoration-property animation. */
+.s-wave a {
+	text-decoration: underline wavy color-mix(in srgb, var(--mv-blue) 55%, transparent);
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 0.22em;
+	transition: text-underline-offset 0.25s, text-decoration-color 0.25s, color 0.25s;
+}
+.s-wave a:visited,
+body:has(#sim:checked) .s-wave a { color: var(--mv-muted); text-decoration-color: var(--mv-muted); }
+.s-wave a:hover { color: var(--mv-blue-deep); text-decoration-color: var(--mv-blue); text-underline-offset: 0.34em; }
+.s-wave a:active { text-underline-offset: 0.18em; }
+
+/* 7 ── Boussole: a compass arrow swings out of the word. */
+.s-compass a {
+	position: relative;
+	text-decoration: none;
+	background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat;
+}
+.s-compass a::after {
+	content: "↗";
+	position: absolute;
+	right: -0.9em; top: 0.1em;
+	font-size: 0.75em;
+	opacity: 0;
+	transform: translate(-0.25em, 0.25em) rotate(-45deg);
+	transition: opacity 0.2s, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.s-compass a:visited,
+body:has(#sim:checked) .s-compass a { color: var(--mv-warm-deep); }
+.s-compass a:hover::after { opacity: 1; transform: translate(0, 0) rotate(0); }
+.s-compass a:active::after { transform: translate(0.15em, -0.15em) rotate(0); }
+
+/* 8 ── Rideau: a curtain of colour draws across, clipped. */
+.s-curtain a {
+	position: relative;
+	text-decoration: none;
+	color: var(--mv-ink);
+}
+.s-curtain a span {
+	position: absolute;
+	inset: 0;
+	color: var(--mv-highlight);
+	clip-path: inset(0 100% 0 0);
+	transition: clip-path 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+	pointer-events: none;
+}
+.s-curtain a:visited,
+body:has(#sim:checked) .s-curtain a { color: var(--mv-muted); }
+.s-curtain a:hover span { clip-path: inset(0 0 0 0); }
+.s-curtain a:active span { color: var(--mv-warm-deep); }
+
+/* 9 ── Néon: unapologetically loud. Glow is text-shadow, so nothing moves. */
+.s-neon {
+	background: #17202b;
+	border-color: #17202b;
+	color: #cfd9e4;
+}
+.s-neon h3, .s-neon .flags li { color: #cfd9e4; background: rgba(255,255,255,.08); }
+.s-neon a {
+	color: #7fe7ff;
+	text-decoration: none;
+	transition: text-shadow 0.25s, color 0.25s;
+}
+.s-neon a:visited,
+body:has(#sim:checked) .s-neon a { color: #c9a2ff; }
+.s-neon a:hover {
+	color: #fff;
+	text-shadow: 0 0 4px #7fe7ff, 0 0 12px #7fe7ff, 0 0 28px rgba(127, 231, 255, 0.7);
+}
+.s-neon a:active { color: #ffd7f4; text-shadow: 0 0 4px #ff7fd8, 0 0 16px #ff7fd8; }
+
+/* 10 ── Relief: letterpressed into the paper. */
+.s-letterpress { background: var(--mv-cream); }
+.s-letterpress a {
+	text-decoration: none;
+	color: var(--mv-warm-deep);
+	text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+	background: linear-gradient(color-mix(in srgb, var(--mv-warm) 40%, transparent), color-mix(in srgb, var(--mv-warm) 40%, transparent)) 0 100% / 100% 1px no-repeat;
+	transition: text-shadow 0.2s, color 0.2s;
+}
+.s-letterpress a:visited,
+body:has(#sim:checked) .s-letterpress a { color: var(--mv-muted); }
+.s-letterpress a:hover { color: var(--mv-ink); text-shadow: 0 1px 0 rgba(255,255,255,.9), 0 -1px 0 rgba(0,0,0,.18); }
+/* Pressed in rather than raised: the highlight moves above, the shadow below.
+   (text-shadow has no `inset` keyword — that is box-shadow only.) */
+.s-letterpress a:active { text-shadow: 0 -1px 0 rgba(255,255,255,.95), 0 1px 0 rgba(0,0,0,.22); color: var(--mv-warm-deep); }
+
+/* 11 ── Dégradé: the text itself is the gradient. */
+.s-gradient a {
+	text-decoration: none;
+	background-image: linear-gradient(100deg, var(--mv-blue), var(--mv-highlight));
+	background-size: 100% 100%;
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+	transition: filter 0.25s;
+}
+/*
+ * There is deliberately NO :visited rule here.
+ *
+ * The text has no `color` to change — it is transparent, with a gradient
+ * showing through — and `filter` is not on the permitted list, so a browser
+ * would drop it. The simulated state below is what a *class* can do, which is
+ * the only way to get this effect at all. Shown as the limit it is.
+ */
+body:has(#sim:checked) .s-gradient a { filter: grayscale(0.75) opacity(0.75); }
+.s-gradient a:hover { filter: saturate(1.45); }
+.s-gradient a:active { filter: saturate(1.45) brightness(0.9); }
+
+/* 12 ── Décollage: the word lifts off the page. Transform never reflows,
+        but it can overlap its neighbours mid-flight. */
+.s-liftoff a {
+	display: inline-block;
+	text-decoration: none;
+	background: linear-gradient(currentColor, currentColor) 0 100% / 100% 1px no-repeat;
+	transition: transform 0.28s cubic-bezier(0.34, 1.7, 0.64, 1), color 0.2s;
+}
+.s-liftoff a:visited,
+body:has(#sim:checked) .s-liftoff a { color: var(--mv-warm-deep); }
+.s-liftoff a:hover { transform: translateY(-0.18em) rotate(-1.5deg); color: var(--mv-highlight); }
+.s-liftoff a:active { transform: translateY(0.05em) rotate(0.5deg); }
+
+/* ── Focus, for every gallery card ────────────────────────────────────────── */
+
+/*
+ * LVHA says nothing about keyboard users. Any of the above shipped without
+ * this is unusable for them, so it is set once, for all of them.
+ */
+.card a:focus-visible,
+.proposal a:focus-visible {
+	outline: 2px solid var(--mv-blue);
+	outline-offset: 3px;
+	border-radius: 2px;
+}
+
+/* =========================================================================
+   THREE PROPOSALS FOR MAMAN VOYAGE
+   ========================================================================= */
+
+.proposal {
+	margin: 0 0 1.5rem;
+	border: 1px solid var(--mv-border);
+	border-radius: var(--radius);
+	overflow: hidden;
+	box-shadow: var(--shadow);
+}
+
+.proposal > header { padding: 1.15rem 1.35rem 0.9rem; border-bottom: 1px solid var(--mv-border); }
+.proposal > header p { margin: 0.3rem 0 0; color: var(--mv-muted); font-size: 0.9rem; }
+.proposal .demo { padding: 1.35rem; font-size: 1.02rem; }
+.proposal .demo p { margin: 0 0 0.9rem; }
+.proposal .demo p:last-child { margin-bottom: 0; }
+
+.states { display: flex; flex-wrap: wrap; gap: 1.1rem; padding: 0 1.35rem 1.2rem; font-size: 0.9rem; }
+.states div { min-width: 7rem; }
+.states dt { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mv-muted); }
+
+pre {
+	margin: 0;
+	padding: 1.1rem 1.35rem;
+	background: #1e232b;
+	color: #d7dee8;
+	font: 12.5px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	overflow-x: auto;
+}
+pre .c { color: #7f8ea3; font-style: italic; }
+pre .p { color: #9ecbff; }
+pre .v { color: #f0b9a0; }
+
+/* ── Proposal A — « Ligne d'horizon » (article prose) ─────────────────────── */
+
+.p-horizon .demo { background: #fff; }
+.p-horizon .demo a {
+	color: var(--mv-blue);
+	text-decoration: none;
+	background-image:
+		linear-gradient(var(--mv-warm), var(--mv-warm)),
+		linear-gradient(color-mix(in srgb, var(--mv-blue) 32%, transparent), color-mix(in srgb, var(--mv-blue) 32%, transparent));
+	background-size: 0% 2px, 100% 1px;
+	background-position: 0 100%, 0 100%;
+	background-repeat: no-repeat;
+	/* Load-bearing: without it, a link wrapping onto a second line is painted
+	   as one sliced box and the underline lands under only part of it. Never
+	   visible in a single-line demo; always visible in a real article. */
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+	transition: background-size 0.35s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease;
+}
+.p-horizon .demo a:visited,
+body:has(#sim:checked) .p-horizon .demo a { color: var(--mv-warm-deep); }
+.p-horizon .demo a:hover { color: var(--mv-warm-deep); background-size: 100% 2px, 100% 1px; }
+.p-horizon .demo a:active { color: var(--mv-highlight); }
+
+/* ── Proposal B — « Carnet » (captions, tiles, sidebars) ──────────────────── */
+
+.p-carnet .demo { background: var(--mv-cream); }
+.p-carnet .demo a {
+	color: var(--mv-ink);
+	text-decoration: underline dotted color-mix(in srgb, var(--mv-warm) 70%, transparent);
+	text-decoration-thickness: 1.5px;
+	text-underline-offset: 0.24em;
+	transition: text-decoration-color 0.2s, color 0.2s;
+}
+.p-carnet .demo a:visited,
+body:has(#sim:checked) .p-carnet .demo a { color: var(--mv-muted); text-decoration-color: var(--mv-muted); }
+.p-carnet .demo a:hover { color: var(--mv-warm-deep); text-decoration-style: solid; text-decoration-color: var(--mv-warm); }
+.p-carnet .demo a:active { color: var(--mv-highlight); text-decoration-color: var(--mv-highlight); }
+
+/* ── Proposal C — « Tampon » (hub links, CTAs, "lire la suite") ───────────── */
+
+.p-tampon .demo { background: var(--mv-blue-tint); }
+.p-tampon .demo a {
+	display: inline-block;
+	padding: 0.22em 0.7em;
+	border: 1.5px solid color-mix(in srgb, var(--mv-warm) 55%, transparent);
+	border-radius: 4px;
+	background-color: #fff;
+	color: var(--mv-warm-deep);
+	text-decoration: none;
+	transition: transform 0.2s cubic-bezier(0.34, 1.6, 0.64, 1), background-color 0.2s, border-color 0.2s, color 0.2s;
+}
+.p-tampon .demo a:visited,
+body:has(#sim:checked) .p-tampon .demo a {
+	color: var(--mv-muted);
+	border-color: var(--mv-border);
+	background-color: #fbfbfa;
+}
+.p-tampon .demo a:hover {
+	color: #fff;
+	background-color: var(--mv-warm);
+	border-color: var(--mv-warm);
+	transform: rotate(-1.2deg);
+}
+.p-tampon .demo a:active { background-color: var(--mv-highlight); border-color: var(--mv-highlight); transform: rotate(0.4deg) scale(0.98); }
+
+/* ── Footnotes ────────────────────────────────────────────────────────────── */
+
+.note {
+	margin: 1.2rem 0 0;
+	padding: 1.1rem 1.25rem;
+	background: var(--mv-cream);
+	border-radius: var(--radius);
+	font-size: 0.92rem;
+}
+.note h3 { margin-bottom: 0.4rem; }
+.note p:last-child { margin-bottom: 0; }
+.note code {
+	padding: 0.08em 0.35em;
+	background: rgba(255, 255, 255, 0.75);
+	border-radius: 3px;
+	font: 0.88em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* { transition-duration: 0.01ms !important; }
+}

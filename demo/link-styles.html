@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Styles de liens — Maman Voyage</title>
+<link rel="stylesheet" href="link-styles.css">
+</head>
+<body>
+
+<div class="sim-toggle">
+	<input type="checkbox" id="sim">
+	<label for="sim"><strong>Simuler l'état « visité »</strong></label>
+	<span class="hint">— :visited only fires for URLs really in your history, so this mirrors every visited rule onto the links below. No JavaScript: the checkbox does it through <code>:has()</code>.</span>
+</div>
+
+<div class="wrap">
+
+<header class="page">
+	<h1>Styles de liens — <em>douze idées et trois propositions</em></h1>
+	<p class="lede">
+		A gallery of link treatments, each showing all four LVHA states, followed by three
+		complete proposals built from the Maman Voyage palette. Every card says whether the
+		style moves the text around it — which decides whether it can be used for marking
+		links <em>after</em> the page has loaded.
+	</p>
+
+	<ul class="swatches">
+		<li><i style="background:#4e74a5"></i> primary #4e74a5</li>
+		<li><i style="background:#886353"></i> warm #886353</li>
+		<li><i style="background:#a92d87"></i> highlight #a92d87</li>
+		<li><i style="background:#f7f4ef"></i> cream #f7f4ef</li>
+		<li><i style="background:#eef3f8"></i> blue tint #eef3f8</li>
+	</ul>
+</header>
+
+<h2>La galerie</h2>
+<p class="section-note">
+	Hover each link, hold the mouse down for <code>:active</code>, tab to it for focus, and
+	flip the switch at the top for <code>:visited</code>.
+</p>
+
+<div class="gallery">
+
+	<div class="card s-horizon">
+		<h3>1 · Ligne d'horizon</h3>
+		<p>Nous sommes partis tôt pour <a href="#">Kew Gardens</a>, avant que la brume ne se lève sur la Tamise.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li>quiet</li></ul>
+	</div>
+
+	<div class="card s-route">
+		<h3>2 · Tracé</h3>
+		<p>L'itinéraire passait par <a href="#">Bath</a> puis remontait vers les Cotswolds.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li>map-like</li></ul>
+	</div>
+
+	<div class="card s-marker">
+		<h3>3 · Surligneur</h3>
+		<p>Le carnet était couvert de notes sur <a href="#">Lisbonne</a>, soulignées au feutre.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">visited = colour only</li></ul>
+	</div>
+
+	<div class="card s-ink">
+		<h3>4 · Encre</h3>
+		<p>Une tache d'encre s'étalait sur le mot <a href="#">Porto</a>, en bas de la page.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">visited = colour only</li></ul>
+	</div>
+
+	<div class="card s-stamp">
+		<h3>5 · Tampon</h3>
+		<p>Le douanier a tamponné <a href="#">Reykjavik</a> sans même lever les yeux.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">overlaps tight leading</li></ul>
+	</div>
+
+	<div class="card s-wave">
+		<h3>6 · Vague</h3>
+		<p>La mer, depuis la fenêtre de <a href="#">Peniche</a>, n'arrêtait jamais de bouger.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li></ul>
+	</div>
+
+	<div class="card s-compass">
+		<h3>7 · Boussole</h3>
+		<p>Direction <a href="#">Édimbourg</a>, plein nord, avec deux enfants et un sac.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">arrow overlaps next word</li></ul>
+	</div>
+
+	<div class="card s-curtain">
+		<h3>8 · Rideau</h3>
+		<p>Le rideau s'est levé sur <a href="#"><span aria-hidden="true">Venise</span>Venise</a>, entre deux trains.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">needs duplicated text</li></ul>
+	</div>
+
+	<div class="card s-neon">
+		<h3>9 · Néon</h3>
+		<p>Les enseignes de <a href="#">Tokyo</a> clignotaient encore à deux heures du matin.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">wacky</li></ul>
+	</div>
+
+	<div class="card s-letterpress">
+		<h3>10 · Relief</h3>
+		<p>Le nom de <a href="#">Ravenne</a> était gravé dans le papier, presque en creux.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li></ul>
+	</div>
+
+	<div class="card s-gradient">
+		<h3>11 · Dégradé</h3>
+		<p>Le ciel au-dessus de <a href="#">Séville</a> passait du bleu au rose en dix minutes.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">no :visited possible — class only</li></ul>
+	</div>
+
+	<div class="card s-liftoff">
+		<h3>12 · Décollage</h3>
+		<p>À sept heures, le vol pour <a href="#">Madère</a> a enfin décollé.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">overlaps mid-flight</li></ul>
+	</div>
+
+</div>
+
+<h2>Trois propositions pour Maman Voyage</h2>
+<p class="section-note">
+	Each of these is a complete LVHA set plus <code>:focus-visible</code>, using only the
+	site's own palette. They are meant to be used together: <strong>A</strong> inside article
+	prose, <strong>B</strong> in captions and compact lists, <strong>C</strong> for the handful
+	of links that are really buttons.
+</p>
+
+<article class="proposal p-horizon">
+	<header>
+		<h3>A · « Ligne d'horizon » — pour le corps des articles</h3>
+		<p>Blue at rest with a hairline rule; a warm-brown line wipes across on hover. Quiet enough to survive a paragraph with six links in it.</p>
+	</header>
+	<div class="demo">
+		<p>
+			Nous avions prévu trois jours à <a href="#">Londres avec des ados</a>, ce qui est
+			exactement le temps qu'il faut pour comprendre qu'on n'en verra pas le quart. Le
+			matin, <a href="#">Kew Gardens</a> ; l'après-midi, les marchés de
+			<a href="#">Camden</a> ; et le soir, la certitude d'y revenir. Voici enfin
+			<a href="#">un lien délibérément très long, écrit pour qu'il passe à la ligne</a>,
+			parce que c'est exactement là que les soulignements dessinés au dégradé se cassent.
+		</p>
+	</div>
+	<dl class="states">
+		<div><dt>:link</dt><dd>blue + 1px rule</dd></div>
+		<div><dt>:visited</dt><dd>warm brown</dd></div>
+		<div><dt>:hover</dt><dd>2px warm wipe</dd></div>
+		<div><dt>:active</dt><dd>highlight</dd></div>
+		<div><dt>:focus-visible</dt><dd>blue outline</dd></div>
+	</dl>
+<pre><span class="c">/* LVHA — this order is not optional */</span>
+.entry-content a {
+  <span class="p">color</span>: <span class="v">#4e74a5</span>;
+  <span class="p">text-decoration</span>: none;
+  <span class="p">background-image</span>:
+    linear-gradient(<span class="v">#886353</span>, <span class="v">#886353</span>),
+    linear-gradient(<span class="v">#4e74a552</span>, <span class="v">#4e74a552</span>);
+  <span class="p">background-size</span>: 0% 2px, 100% 1px;
+  <span class="p">background-position</span>: 0 100%, 0 100%;
+  <span class="p">background-repeat</span>: no-repeat;
+  <span class="p">box-decoration-break</span>: clone;  <span class="c">/* or the underline breaks across two lines */</span>
+  <span class="p">transition</span>: background-size .35s cubic-bezier(.22,1,.36,1), color .2s;
+}
+.entry-content a<span class="p">:visited</span>  { <span class="p">color</span>: <span class="v">#5c3d2e</span>; }        <span class="c">/* colour only — see note */</span>
+.entry-content a<span class="p">:hover</span>    { <span class="p">color</span>: <span class="v">#5c3d2e</span>; <span class="p">background-size</span>: 100% 2px, 100% 1px; }
+.entry-content a<span class="p">:active</span>   { <span class="p">color</span>: <span class="v">#a92d87</span>; }
+.entry-content a<span class="p">:focus-visible</span> { <span class="p">outline</span>: 2px solid <span class="v">#4e74a5</span>; <span class="p">outline-offset</span>: 3px; }</pre>
+</article>
+
+<article class="proposal p-carnet">
+	<header>
+		<h3>B · « Carnet » — pour les légendes, les listes, les encadrés</h3>
+		<p>A pencilled dotted rule that firms up under the cursor. Reads as a note rather than a button, so it sits well in dense, secondary text.</p>
+	</header>
+	<div class="demo">
+		<p>
+			À lire aussi : <a href="#">notre semaine en Algarve</a>, <a href="#">le budget d'un
+			tour du monde en famille</a> et <a href="#">ce qu'on emporte vraiment</a>.
+		</p>
+	</div>
+	<dl class="states">
+		<div><dt>:link</dt><dd>ink + dotted warm</dd></div>
+		<div><dt>:visited</dt><dd>muted grey</dd></div>
+		<div><dt>:hover</dt><dd>solid warm</dd></div>
+		<div><dt>:active</dt><dd>highlight</dd></div>
+		<div><dt>:focus-visible</dt><dd>blue outline</dd></div>
+	</dl>
+<pre>.mv-note a {
+  <span class="p">color</span>: <span class="v">#3a3a3a</span>;
+  <span class="p">text-decoration</span>: underline dotted <span class="v">#886353b3</span>;
+  <span class="p">text-decoration-thickness</span>: 1.5px;
+  <span class="p">text-underline-offset</span>: .24em;
+  <span class="p">transition</span>: text-decoration-color .2s, color .2s;
+}
+.mv-note a<span class="p">:visited</span> { <span class="p">color</span>: <span class="v">#757575</span>; <span class="p">text-decoration-color</span>: <span class="v">#757575</span>; }
+.mv-note a<span class="p">:hover</span>   { <span class="p">color</span>: <span class="v">#5c3d2e</span>; <span class="p">text-decoration-style</span>: solid; <span class="p">text-decoration-color</span>: <span class="v">#886353</span>; }
+.mv-note a<span class="p">:active</span>  { <span class="p">color</span>: <span class="v">#a92d87</span>; <span class="p">text-decoration-color</span>: <span class="v">#a92d87</span>; }
+.mv-note a<span class="p">:focus-visible</span> { <span class="p">outline</span>: 2px solid <span class="v">#4e74a5</span>; <span class="p">outline-offset</span>: 3px; }</pre>
+</article>
+
+<article class="proposal p-tampon">
+	<header>
+		<h3>C · « Tampon » — pour les liens qui sont des boutons</h3>
+		<p>A stamped box that inks in on hover and tilts a degree, like a rubber stamp catching the paper. For "lire la suite", hub links, and the end of a card — never inside a paragraph.</p>
+	</header>
+	<div class="demo">
+		<p><a href="#">Lire le guide de Londres</a> &nbsp; <a href="#">Voir toutes nos destinations</a></p>
+	</div>
+	<dl class="states">
+		<div><dt>:link</dt><dd>white, warm border</dd></div>
+		<div><dt>:visited</dt><dd>greyed, flat</dd></div>
+		<div><dt>:hover</dt><dd>inked warm, tilts</dd></div>
+		<div><dt>:active</dt><dd>highlight, presses</dd></div>
+		<div><dt>:focus-visible</dt><dd>blue outline</dd></div>
+	</dl>
+<pre>.mv-stamp a {
+  <span class="p">display</span>: inline-block;
+  <span class="p">padding</span>: .22em .7em;
+  <span class="p">border</span>: 1.5px solid <span class="v">#8863538c</span>;
+  <span class="p">border-radius</span>: 4px;
+  <span class="p">background-color</span>: <span class="v">#fff</span>;
+  <span class="p">color</span>: <span class="v">#5c3d2e</span>;
+  <span class="p">text-decoration</span>: none;
+  <span class="p">transition</span>: transform .2s cubic-bezier(.34,1.6,.64,1), background-color .2s, border-color .2s, color .2s;
+}
+.mv-stamp a<span class="p">:visited</span> { <span class="p">color</span>: <span class="v">#757575</span>; <span class="p">border-color</span>: <span class="v">#e6e6e6</span>; <span class="p">background-color</span>: <span class="v">#fbfbfa</span>; }
+.mv-stamp a<span class="p">:hover</span>   { <span class="p">color</span>: <span class="v">#fff</span>; <span class="p">background-color</span>: <span class="v">#886353</span>; <span class="p">border-color</span>: <span class="v">#886353</span>; <span class="p">transform</span>: rotate(-1.2deg); }
+.mv-stamp a<span class="p">:active</span>  { <span class="p">background-color</span>: <span class="v">#a92d87</span>; <span class="p">border-color</span>: <span class="v">#a92d87</span>; <span class="p">transform</span>: rotate(.4deg) scale(.98); }
+.mv-stamp a<span class="p">:focus-visible</span> { <span class="p">outline</span>: 2px solid <span class="v">#4e74a5</span>; <span class="p">outline-offset</span>: 3px; }</pre>
+</article>
+
+<h2>Deux choses à savoir</h2>
+
+<div class="note">
+	<h3>Ce que <code>:visited</code> accepte — et refuse</h3>
+	<p>
+		A browser will only honour colour-family properties on <code>:visited</code>:
+		<code>color</code>, <code>background-color</code>, <code>border-*-color</code>,
+		<code>outline-color</code>, <code>column-rule-color</code>,
+		<code>text-decoration-color</code>, <code>text-emphasis-color</code>, and SVG
+		<code>fill</code> / <code>stroke</code>. No pseudo-element content, no opacity, no
+		transform, no shadow, no font change. It also <strong>ignores the alpha channel</strong>,
+		so an <code>rgba()</code> there renders fully opaque — use a solid colour and mean it.
+		And <code>getComputedStyle()</code> deliberately reports the unvisited values, so script
+		cannot read the state either.
+	</p>
+	<p>
+		That is why card 11 can only desaturate on visit: its text has no <code>color</code> to
+		change. Anything richer than a colour swap has to be driven by a class, not a selector.
+	</p>
+</div>
+
+<div class="note">
+	<h3><code>:visited</code> et <code>.mfy-read-link</code> disent deux choses différentes</h3>
+	<p>
+		The plugin already marks links to articles opened <em>during this visit</em>, with
+		<code>.mfy-read-link</code> — a class, session-scoped, gone after 24 hours or a reset.
+		<code>:visited</code> is the browser's own memory: months deep, unreadable, unresettable
+		from the page.
+	</p>
+	<p>
+		If both are styled, they should agree — pick one visual language, e.g. the muted grey
+		used in proposals A and B, and give it to both. If they disagree, a reader sees two
+		different "already read" signals on the same page and trusts neither. The simplest
+		honest option is to style <code>:visited</code> very lightly (or not at all, as today)
+		and let the session marking carry the meaning.
+	</p>
+</div>
+
+</div>
+</body>
+</html>

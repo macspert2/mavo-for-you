@@ -211,6 +211,7 @@ includes/class-mavo-for-you-render.php   placeholder, assets, eligibility
 includes/class-mavo-for-you-shortcode.php  [geo_related], the impersonal block
 includes/class-mavo-for-you-cache.php      generation-busted transients
 includes/class-mavo-for-you-admin.php    Settings → Mavo For You
+includes/class-mavo-for-you-tuner.php    Tools → Mavo For You scoring
 assets/js/mavo-for-you.js            tracking + request + rendering
 assets/css/mavo-for-you.css          section styling (cards reuse .mv-tile)
 tests/                               plain-PHP suites, no tooling required
@@ -238,6 +239,34 @@ not smuggle a contact page back in. `mavo_for_you_track_post` has the last word 
 **Settings → Mavo For You** — one setting: the languages the block is active in.
 Everything else is a constant or a filter, on purpose. The page also reports whether
 the Travel Finder data and Polylang are reachable.
+
+## Tuning the threshold
+
+**Tools → Mavo For You scoring.** `min_score` has never been set from data — it was a
+conservative guess made before geography, hubs and the impersonal block existed, and all
+three changed what the numbers mean. A hub child clears it on one relationship alone, and
+`[geo_related]` scores off a single synthetic view, so its totals run at roughly a third
+of a three-article session's against the same bar.
+
+`MFY_Scorer::rank()` is a pure function of its inputs, so the page replays synthetic
+sessions against real posts with no browsing at all. For each sampled post it scores four
+shapes — impersonal, focused (two more in the same place), thematic (two more sharing its
+strong filters), scattered (two at random) — and reports:
+
+- **the threshold sweep** — for each candidate `min_score`, the share of sessions that
+  would still fill a block, show a thin one, or show nothing. That is the question a
+  threshold actually poses: not "is 7.5 right" but "what does 7.5 cost me".
+- **where the scores sit** — p10 / median / p90 of the top and third score, per shape. If
+  the impersonal row sits far below the others, one absolute threshold is doing two jobs.
+- **third ÷ top** — the alternative. A *relative* gate is scale-free and survives future
+  scoring changes, where an absolute one needs re-tuning after each.
+- **raw CSV** — for the part no distribution can answer: judging candidates by hand.
+
+Hub picks are excluded from the sweep because they bypass the threshold entirely; a
+session counted under "nothing" may still show its hub.
+
+It reads only, runs on demand, and stops at a 45-second budget. `tests/test-tuner.php`
+covers the arithmetic, which is the part that would quietly mislead a decision.
 
 ## Debugging
 
@@ -397,6 +426,7 @@ php tests/test-no-hubs.php       # every hub feature off when Hub Manager is abs
 php tests/test-utility-pages.php # contact/privacy/legal pages stay out of the profile
 php tests/test-shortcode.php     # [geo_related]: impersonal ranking, markup, handover
 php tests/test-render.php        # where the placeholder goes, and where it stands down
+php tests/test-tuner.php         # the scoring instrument's percentiles and sweep
 node tests/test-frontend.js  # tracking, qualification gate, storage, reset
 ```
 
