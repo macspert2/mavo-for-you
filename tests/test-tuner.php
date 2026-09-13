@@ -3,11 +3,11 @@
  * The tuner's arithmetic. The sampling needs WordPress, but the analysis is
  * pure — and it is the part that would quietly mislead a tuning decision.
  */
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 function add_management_page( ...$args ) {}
 function add_action( ...$args ) {}
-require __DIR__ . '/../includes/class-mavo-for-you-tuner.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-tuner.php';
 
 function session( string $shape, array $scores ): array {
 	return [

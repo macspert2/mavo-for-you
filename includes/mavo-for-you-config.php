@@ -420,6 +420,30 @@ class MFY_Config {
 		return (int) apply_filters( 'mavo_for_you_geo_pool_size', 40 );
 	}
 
+	/**
+	 * How long a shared candidate pool survives, absent an edit.
+	 *
+	 * Correctness does not depend on this: any post save bumps the cache
+	 * generation and orphans every key at once. The TTL only stops orphans
+	 * accumulating in wp_options.
+	 */
+	public static function pool_cache_ttl(): int {
+		return (int) apply_filters( 'mavo_for_you_pool_cache_ttl', 6 * HOUR_IN_SECONDS );
+	}
+
+	/**
+	 * Extra rows fetched so a pool survives having one visitor's history
+	 * removed from it.
+	 *
+	 * The pool is cached without exclusions, because exclusions are the only
+	 * personal part of the query. Trimming then happens in PHP, so the query
+	 * has to over-fetch by at least the largest possible exclusion list: the
+	 * current post, up to max_views() viewed posts, and the placed hubs.
+	 */
+	public static function pool_overfetch(): int {
+		return (int) apply_filters( 'mavo_for_you_pool_overfetch', self::max_views() + 5 );
+	}
+
 	/** How many candidates the SQL pool may return before PHP scoring. */
 	public static function candidate_pool_size(): int {
 		return (int) apply_filters( 'mavo_for_you_candidate_pool_size', 60 );

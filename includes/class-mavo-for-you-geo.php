@@ -126,28 +126,56 @@ class MFY_Geo {
 	 * @return int[]
 	 */
 	public static function candidate_ids( string $lang, array $place_ids, array $exclude_ids, int $limit ): array {
+		$pool     = self::place_pool( $lang, $place_ids, $limit + MFY_Config::pool_overfetch() );
+		$excluded = array_flip( array_map( 'absint', $exclude_ids ) );
+		$out      = [];
+
+		foreach ( $pool as $id ) {
+			if ( count( $out ) >= $limit ) {
+				break;
+			}
+			if ( ! isset( $excluded[ $id ] ) ) {
+				$out[] = $id;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Published posts tagged with any of these places — with no visitor in it.
+	 *
+	 * Same reasoning as MFY_Data::candidate_pool(): the exclusion list is the
+	 * only personal part, so it is applied in PHP and what remains is shared
+	 * between everyone reading about the same place.
+	 *
+	 * @param int[] $place_ids
+	 * @return int[]
+	 */
+	private static function place_pool( string $lang, array $place_ids, int $limit ): array {
 		$place_ids = array_values( array_unique( array_filter( array_map( 'absint', $place_ids ) ) ) );
 
 		if ( ! $place_ids || ! self::available() || ! self::supports_lang( $lang ) ) {
 			return [];
 		}
 
+		sort( $place_ids );
+		$limit = max( 1, min( 250, $limit ) );
+		$key   = MFY_Cache::key( 'geopool', [ $lang, implode( ',', $place_ids ), $limit ] );
+		$hit   = get_transient( $key );
+
+		if ( is_array( $hit ) ) {
+			return $hit;
+		}
+
 		global $wpdb;
 		$table      = self::table();
 		$col        = 'term_id_' . $lang;
 		$post_types = MFY_Config::candidate_post_types();
-		$exclude    = array_values( array_unique( array_filter( array_map( 'absint', $exclude_ids ) ) ) );
-		$limit      = max( 1, min( 200, $limit ) );
 
 		$place_ph = implode( ',', array_fill( 0, count( $place_ids ), '%d' ) );
 		$type_ph  = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
 		$args     = array_merge( $post_types, $place_ids );
-
-		$exclude_sql = '';
-		if ( $exclude ) {
-			$exclude_sql = ' AND p.ID NOT IN (' . implode( ',', array_fill( 0, count( $exclude ), '%d' ) ) . ')';
-			$args        = array_merge( $args, $exclude );
-		}
 
 		$args[] = $limit;
 
@@ -165,14 +193,17 @@ class MFY_Geo {
 				    AND p.post_type IN ({$type_ph})
 				    AND gp.{$col} IS NOT NULL
 				    AND gp.id IN ({$place_ph})
-				    {$exclude_sql}
 				  ORDER BY p.post_date DESC
 				  LIMIT %d",
 				...$args
 			)
 		);
 
-		return array_map( 'absint', $ids ?: [] );
+		$out = array_map( 'absint', $ids ?: [] );
+
+		set_transient( $key, $out, MFY_Config::pool_cache_ttl() );
+
+		return $out;
 	}
 
 	/** Display names for places, for debug output. [ place_id => name ]. */

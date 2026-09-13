@@ -3,9 +3,9 @@
  * [geo_related]: the impersonal block that ships inside the cached page, and
  * hands over to the personalised one.
  */
-require __DIR__ . '/harness.php';
-require __DIR__ . '/../includes/class-mavo-for-you-cache.php';
-require __DIR__ . '/../includes/class-mavo-for-you-shortcode.php';
+require_once __DIR__ . '/harness.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-cache.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-shortcode.php';
 
 // A London guide with children, siblings, and an outsider.
 mock_place( 10, 'city', 'Londres', 20 );
@@ -106,7 +106,12 @@ check( 'a bare mention in prose does not count', ! MFY_Shortcode::post_has_short
 $GLOBALS['MOCK_TRANSIENTS'] = [];
 ( new ReflectionProperty( 'MFY_Shortcode', 'rendered' ) )->setValue( null, [] );
 MFY_Shortcode::render_shortcode( [] );
-check( 'the block is cached', count( $GLOBALS['MOCK_TRANSIENTS'] ) === 1, json_encode( array_keys( $GLOBALS['MOCK_TRANSIENTS'] ) ) );
+// The rendered block, plus the shared pools it drew on — all of them keyed by
+// the same generation, so one save retires the lot.
+$keys = array_keys( $GLOBALS['MOCK_TRANSIENTS'] );
+check( 'the rendered block is cached', (bool) array_filter( $keys, fn( $k ) => str_starts_with( $k, 'mfy_sc_' ) ), json_encode( $keys ) );
+check( 'the candidate pools are cached alongside it', (bool) array_filter( $keys, fn( $k ) => str_starts_with( $k, 'mfy_pool_' ) ) );
+check( 'no cache key carries anything personal', ! array_filter( $keys, fn( $k ) => str_contains( $k, 'view' ) || str_contains( $k, 'session' ) ) );
 $generation = MFY_Cache::generation();
 MFY_Cache::bust();
 check( 'a save bumps the generation', MFY_Cache::generation() === $generation + 1 );

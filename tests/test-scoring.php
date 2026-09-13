@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 $t = time();
 
@@ -85,6 +85,45 @@ check( 'duration multiplier steps correctly',
 check( 'scroll multiplier steps correctly',
 	MFY_Scorer::scroll_multiplier( 24 ) === 0.5 && MFY_Scorer::scroll_multiplier( 25 ) === 0.75
 	&& MFY_Scorer::scroll_multiplier( 90 ) === 1.25 );
+
+// --- 10. The shared candidate pool -------------------------------------------
+// The pool is cached without exclusions so two visitors can share one query.
+// What must not be shared is the answer.
+$GLOBALS['MOCK_TRANSIENTS'] = [];
+$GLOBALS['wpdb']->queries = 0;
+
+$alice = MFY_Scorer::rank( 1, 'fr', [ view( 1, 120, 80, $t ), view( 2, 100, 75, $t - 300 ) ], [], null );
+$after_first = count( $GLOBALS['MOCK_TRANSIENTS'] );
+
+// Bob read one of the posts Alice is about to be recommended.
+$bob = MFY_Scorer::rank( 1, 'fr', [ view( 1, 120, 80, $t ), view( 3, 100, 75, $t - 300 ) ], [], null );
+
+check( 'the first request fills the pool cache', $after_first > 0, (string) $after_first );
+check( 'the second adds no new pool keys', count( $GLOBALS['MOCK_TRANSIENTS'] ) === $after_first,
+	json_encode( array_keys( $GLOBALS['MOCK_TRANSIENTS'] ) ) );
+
+$alice_ids = array_column( $alice['recommendations'], 'post_id' );
+$bob_ids   = array_column( $bob['recommendations'], 'post_id' );
+
+check( 'a shared pool still excludes each visitor\'s own history',
+	! in_array( 2, $alice_ids, true ) && ! in_array( 3, $bob_ids, true ),
+	'alice: ' . implode( ',', $alice_ids ) . ' | bob: ' . implode( ',', $bob_ids ) );
+check( 'and the two get different answers from it', $alice_ids !== $bob_ids,
+	'alice: ' . implode( ',', $alice_ids ) . ' | bob: ' . implode( ',', $bob_ids ) );
+
+// A save must retire it, or an edited post lingers in everyone's suggestions.
+MFY_Cache::bust();
+MFY_Scorer::rank( 1, 'fr', [ view( 1, 120, 80, $t ), view( 2, 100, 75, $t - 300 ) ], [], null );
+check( 'a save retires the pool rather than serving it stale',
+	count( $GLOBALS['MOCK_TRANSIENTS'] ) > $after_first,
+	(string) count( $GLOBALS['MOCK_TRANSIENTS'] ) );
+
+// --- 11. Over-fetching ---------------------------------------------------------
+// The pool is trimmed in PHP, so it must be fetched deep enough to survive a
+// full history being removed from it.
+check( 'the pool over-fetches by at least the history cap',
+	MFY_Config::pool_overfetch() >= MFY_Config::max_views(),
+	MFY_Config::pool_overfetch() . ' vs ' . MFY_Config::max_views() );
 
 echo "\n";
 printf( "%d failure(s)\n", $GLOBALS['FAILED'] );

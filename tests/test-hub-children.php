@@ -3,7 +3,7 @@
  * Hub children as candidates: the other articles an editor placed in the same
  * hub, which no score would necessarily have found.
  */
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 $t = time();
 

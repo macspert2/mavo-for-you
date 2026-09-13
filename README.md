@@ -25,8 +25,8 @@ JSON response        no-store, private — never publicly cached
 assets/js            injects the block into the placeholder
 ```
 
-Only the impersonal block is ever cached server-side (a transient carrying a
-generation counter that any post save or hub change bumps). Personalised responses are
+Cached server-side: the impersonal block, and the shared candidate pools behind it — all
+keyed by a generation counter that any post save or hub change bumps. Personalised responses are
 cached nowhere. Nothing personal is stored server-side. There is no profile, no cookie, no analytics
 table, no third party. The visitor's history lives in their browser under
 `mavo_for_you_v0` and expires 24 hours after the last interaction.
@@ -240,6 +240,32 @@ not smuggle a contact page back in. `mavo_for_you_track_post` has the last word 
 Everything else is a constant or a filter, on purpose. The page also reports whether
 the Travel Finder data and Polylang are reachable.
 
+## The shared candidate pool
+
+Every article view fires one uncached REST request, and the expensive part of it — the
+candidate pools — is **identical for any two visitors with the same interests**. The only
+personal element is the exclusion list: what that particular reader has already seen.
+
+So the exclusions come out of the SQL and are applied in PHP afterwards. What remains is
+shareable, and is cached:
+
+| pool | key | what it holds |
+|---|---|---|
+| filter | lang + sorted slugs + limit | post IDs, match counts, view counts |
+| geography | lang + sorted place IDs + limit | post IDs |
+| hub children | hub ID + type + limit | post IDs |
+
+Nothing personal is stored: the same rows are served to everyone, and the cached values
+are post IDs and public counters. Personalised *responses* are still cached nowhere.
+
+Because the trimming happens in PHP, each pool over-fetches by `mavo_for_you_pool_overfetch`
+(the history cap plus five) so it survives a full history being removed from it.
+
+Correctness does not rest on the TTL: any post save bumps the cache generation and orphans
+every key at once (`MFY_Cache`). Autosaves and revisions are excluded from that — they fire
+`save_post` once a minute while an editor has a post open, and busting on them would keep
+the cache permanently cold for no benefit.
+
 ## Tuning the threshold
 
 **Tools → Mavo For You scoring.** `min_score` has never been set from data — it was a
@@ -391,6 +417,9 @@ Scoring: `mavo_for_you_recency_weights`, `mavo_for_you_duration_multipliers`,
 `mavo_for_you_points_strong_match`, `mavo_for_you_points_weak_match`,
 `mavo_for_you_points_search_strong`, `mavo_for_you_points_search_weak`,
 `mavo_for_you_referral_search_factor`, `mavo_for_you_candidate_pool_size`.
+
+Caching: `mavo_for_you_pool_cache_ttl`, `mavo_for_you_pool_overfetch`,
+`mavo_for_you_shortcode_cache_ttl`.
 
 Shortcode: `mavo_for_you_shortcode_limit`, `mavo_for_you_shortcode_max_limit`,
 `mavo_for_you_shortcode_cache_ttl`, `mavo_for_you_shortcode_html`.

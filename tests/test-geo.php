@@ -4,7 +4,7 @@
  * test: three London articles read, three suggestions about Barcelona and
  * Edinburgh returned.
  */
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 $t = time();
 

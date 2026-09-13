@@ -23,6 +23,8 @@ function sanitize_key( $v ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i'
 function __( $s, $d = '' ) { return $s; }
 function esc_html( $s ) { return $s; }
 function get_option( $k, $d = null ) { return $GLOBALS['MOCK_OPTIONS'][ $k ] ?? $d; }
+function wp_is_post_revision( $id ) { return false; }
+function wp_is_post_autosave( $id ) { return false; }
 function remove_accents( $s ) { return strtr( $s, [ 'é'=>'e','è'=>'e','ê'=>'e','à'=>'a','ù'=>'u','ô'=>'o','î'=>'i','ç'=>'c' ] ); }
 function get_the_title( $p ) { $id = is_object( $p ) ? $p->ID : (int) $p; return $GLOBALS['MOCK_POSTS'][ $id ]['title'] ?? "#$id"; }
 function get_permalink( $p ) { $id = is_object($p)?$p->ID:$p; return "https://example.test/$id/"; }
@@ -126,14 +128,27 @@ function mavo_get_hub_children( int $hub_id, string $type, array $args = [] ): a
 
 } // MFY_TEST_WITHOUT_HUBS
 
+/**
+ * Content changed, so the cache generation moves — exactly as save_post does
+ * in production. Without this the mocks would populate a pool, add a post to
+ * the fixture, and then read the stale pool back.
+ */
+function mock_bust(): void {
+	if ( class_exists( 'MFY_Cache' ) ) {
+		MFY_Cache::bust();
+	}
+}
+
 /** Marks a post as a hub of the given type. */
 function mock_hub( int $post_id, string $type ): void {
 	$GLOBALS['MOCK_HUB_TYPE'][ $post_id ] = $type;
+	mock_bust();
 }
 
 /** Points a child at its primary hub of one type. */
 function mock_primary_hub( int $child_id, int $hub_id, string $type ): void {
 	$GLOBALS['MOCK_PRIMARY_HUB'][ $child_id ][ $type ] = $hub_id;
+	mock_bust();
 }
 
 /** tvf registry + store stubs. */
@@ -167,6 +182,7 @@ class Fake_WPDB {
 	public $term_relationships = 'wp_term_relationships';
 	public $term_taxonomy = 'wp_term_taxonomy';
 	public $last_sql = '';
+	public $queries = 0;
 	public function prepare( $sql, ...$args ) {
 		if ( isset( $args[0] ) && is_array( $args[0] ) ) { $args = $args[0]; }
 		$i = 0;
@@ -292,11 +308,12 @@ class Fake_WPDB {
 }
 $GLOBALS['wpdb'] = new Fake_WPDB();
 
-require __DIR__ . '/../includes/mavo-for-you-config.php';
-require __DIR__ . '/../includes/class-mavo-for-you-data.php';
-require __DIR__ . '/../includes/class-mavo-for-you-geo.php';
-require __DIR__ . '/../includes/class-mavo-for-you-hubs.php';
-require __DIR__ . '/../includes/class-mavo-for-you-scorer.php';
+require_once __DIR__ . '/../includes/mavo-for-you-config.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-data.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-cache.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-geo.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-hubs.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-scorer.php';
 
 /**
  * Geo Tagger stand-in: places keyed by id, and a post -> place-chain map.
@@ -305,16 +322,19 @@ require __DIR__ . '/../includes/class-mavo-for-you-scorer.php';
  */
 function mock_place( int $id, string $level, string $name, ?int $parent_id = null ): void {
 	$GLOBALS['MOCK_PLACES'][ $id ] = [ 'level' => $level, 'name' => $name, 'parent_id' => $parent_id ];
+	mock_bust();
 }
 
 /** @param array $levels [ 'city' => place_id, 'region' => .., 'country' => .. ] */
 function mock_geo( int $post_id, array $levels ): void {
 	$GLOBALS['MOCK_POST_PLACES'][ $post_id ] = $levels;
+	mock_bust();
 }
 
 function mock_post( int $id, string $title, string $lang, array $weights, string $status = 'publish', string $type = 'post', string $slug = '' ): void {
 	$GLOBALS['MOCK_POSTS'][ $id ]   = [ 'title' => $title, 'lang' => $lang, 'status' => $status, 'type' => $type, 'slug' => $slug, 'content' => '' ];
 	$GLOBALS['MOCK_WEIGHTS'][ $id ] = [ 'lang' => $lang, 'slugs' => $weights ];
+	mock_bust();
 }
 
 function view( int $id, int $duration, int $scroll, int $last_seen ): array {

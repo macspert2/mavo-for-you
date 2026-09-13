@@ -159,27 +159,68 @@ class MFY_Data {
 	 * @return array<int, array{post_id:int, hits:int, views:int}>
 	 */
 	public static function get_candidates( string $lang, array $strong_slugs, array $exclude_ids, int $limit ): array {
+		$pool = self::candidate_pool( $lang, $strong_slugs, $limit + MFY_Config::pool_overfetch() );
+
+		return self::trim_pool( $pool, $exclude_ids, $limit );
+	}
+
+	/**
+	 * Removes one visitor's history from a shared pool.
+	 *
+	 * @param array $pool    Rows keyed with 'post_id'.
+	 * @param int[] $exclude
+	 */
+	public static function trim_pool( array $pool, array $exclude, int $limit ): array {
+		$excluded = array_flip( array_map( 'absint', $exclude ) );
+		$out      = [];
+
+		foreach ( $pool as $row ) {
+			if ( count( $out ) >= $limit ) {
+				break;
+			}
+			if ( ! isset( $excluded[ $row['post_id'] ] ) ) {
+				$out[] = $row;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
+	 * The candidate pool for a set of filters — with no visitor in it.
+	 *
+	 * Exclusions are the only part of this query that differ between two
+	 * people reading the same thing, so they are left out and applied in PHP
+	 * afterwards. What remains is identical for every visitor with the same
+	 * interests, which makes it cacheable and turns the hot path into a
+	 * transient read for most requests.
+	 *
+	 * Nothing personal is stored: the cached rows are post IDs, match counts
+	 * and the site's own view counter. The same rows are served to everyone.
+	 */
+	private static function candidate_pool( string $lang, array $strong_slugs, int $limit ): array {
 		$strong_slugs = array_values( array_intersect( $strong_slugs, self::signal_slugs() ) );
 
 		if ( ! $strong_slugs || ! self::integration_available() ) {
 			return [];
 		}
 
+		sort( $strong_slugs ); // Canonical order, or the same pool gets two keys.
+		$limit = max( 1, min( 250, $limit ) );
+		$key   = MFY_Cache::key( 'pool', [ $lang, implode( ',', $strong_slugs ), $limit ] );
+		$hit   = get_transient( $key );
+
+		if ( is_array( $hit ) ) {
+			return $hit;
+		}
+
 		global $wpdb;
 		$table      = TVF_Store::table_name();
 		$post_types = MFY_Config::candidate_post_types();
-		$exclude    = array_values( array_unique( array_filter( array_map( 'absint', $exclude_ids ) ) ) );
-		$limit      = max( 1, min( 200, $limit ) );
 
 		$slug_ph = implode( ',', array_fill( 0, count( $strong_slugs ), '%s' ) );
 		$type_ph = implode( ',', array_fill( 0, count( $post_types ), '%s' ) );
 		$args    = array_merge( $post_types, [ $lang ], $strong_slugs );
-
-		$exclude_sql = '';
-		if ( $exclude ) {
-			$exclude_sql = ' AND pf.post_id NOT IN (' . implode( ',', array_fill( 0, count( $exclude ), '%d' ) ) . ')';
-			$args        = array_merge( $args, $exclude );
-		}
 
 		$args[] = $limit;
 
@@ -199,7 +240,6 @@ class MFY_Data {
 				  WHERE pf.lang = %s
 				    AND pf.filter_slug IN ({$slug_ph})
 				    AND pf.weight = 2
-				    {$exclude_sql}
 				  GROUP BY pf.post_id
 				  ORDER BY hits DESC, views DESC, pf.post_id ASC
 				  LIMIT %d",
@@ -216,6 +256,8 @@ class MFY_Data {
 				'views'   => (int) $row['views'],
 			];
 		}
+
+		set_transient( $key, $out, MFY_Config::pool_cache_ttl() );
 
 		return $out;
 	}

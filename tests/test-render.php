@@ -6,9 +6,9 @@
  * itself, so the after-content hook stands down — and a post without the
  * shortcode behaves exactly as it did before the shortcode existed.
  */
-require __DIR__ . '/harness.php';
-require __DIR__ . '/../includes/class-mavo-for-you-cache.php';
-require __DIR__ . '/../includes/class-mavo-for-you-shortcode.php';
+require_once __DIR__ . '/harness.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-cache.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-shortcode.php';
 
 // --- The conditional tags the render class consults -------------------------
 $GLOBALS['MOCK_QUERY'] = [
@@ -61,8 +61,8 @@ define( 'MFY_PLUGIN_DIR', dirname( __DIR__ ) . '/' );
 define( 'MFY_PLUGIN_URL', 'https://example.test/plugin/' );
 define( 'MFY_VERSION', 'test' );
 
-require __DIR__ . '/../includes/class-mavo-for-you-rest.php';
-require __DIR__ . '/../includes/class-mavo-for-you-render.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-rest.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-render.php';
 
 /** Renders the after-content hook for one post, from a clean slate. */
 function render_for( int $post_id ): string {

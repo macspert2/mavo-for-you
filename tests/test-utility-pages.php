@@ -3,7 +3,7 @@
  * §3: contact, privacy and legal pages must not enter the profile — enforced
  * identically in the browser and at the endpoint.
  */
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 $GLOBALS['IS_ADMIN'] = false;
 function current_user_can( $cap ) { return (bool) $GLOBALS['IS_ADMIN']; }
@@ -22,7 +22,7 @@ class WP_REST_Response {
 	public function __construct( $data, $status ) { $this->data = $data; $this->status = $status; }
 	public function header( $k, $v ) { $this->headers[ $k ] = $v; }
 }
-require __DIR__ . '/../includes/class-mavo-for-you-rest.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-rest.php';
 
 $t = time();
 

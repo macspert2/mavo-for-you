@@ -185,12 +185,7 @@ class MFY_Hubs {
 		$out      = [];
 
 		foreach ( $hubs as $hub ) {
-			$children = mavo_get_hub_children( $hub['post_id'], $hub['type'], [
-				// The helper defaults to post_status "any"; a draft child must
-				// never reach a reader.
-				'post_status'    => 'publish',
-				'posts_per_page' => $limit,
-			] );
+			$children = self::children_of( (int) $hub['post_id'], (string) $hub['type'], $limit );
 
 			foreach ( $children as $child_id ) {
 				$child_id = absint( $child_id );
@@ -216,6 +211,36 @@ class MFY_Hubs {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * A hub's published children, cached.
+	 *
+	 * This is a WP_Query per hub, and a hub's children are the same for every
+	 * visitor — the personal part is which of them have already been read, and
+	 * that is filtered by the caller. So the query is shared and the filtering
+	 * is not.
+	 *
+	 * @return int[]
+	 */
+	private static function children_of( int $hub_id, string $type, int $limit ): array {
+		$key = MFY_Cache::key( 'hubkids', [ $hub_id, $type, $limit ] );
+		$hit = get_transient( $key );
+
+		if ( is_array( $hit ) ) {
+			return $hit;
+		}
+
+		$children = array_map( 'absint', mavo_get_hub_children( $hub_id, $type, [
+			// The helper defaults to post_status "any"; a draft child must
+			// never reach a reader.
+			'post_status'    => 'publish',
+			'posts_per_page' => $limit,
+		] ) );
+
+		set_transient( $key, $children, MFY_Config::pool_cache_ttl() );
+
+		return $children;
 	}
 
 	/** Most weight first, geo before theme on a tie, then post ID. */

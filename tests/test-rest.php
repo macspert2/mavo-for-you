@@ -1,5 +1,5 @@
 <?php
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 // --- REST-layer stubs -------------------------------------------------------
 $GLOBALS['IS_ADMIN'] = false;
@@ -20,7 +20,7 @@ class WP_REST_Response {
 	public function header( $k, $v ) { $this->headers[ $k ] = $v; }
 }
 
-require __DIR__ . '/../includes/class-mavo-for-you-rest.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-rest.php';
 
 $t = time();
 mock_post( 1, 'A', 'fr', [ 'citytrip' => 2, 'angleterre' => 2 ] );

@@ -4,7 +4,7 @@
  * silently and leave the ranking exactly as it was before hubs existed.
  */
 define( 'MFY_TEST_WITHOUT_HUBS', true );
-require __DIR__ . '/harness.php';
+require_once __DIR__ . '/harness.php';
 
 $t = time();
 

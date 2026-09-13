@@ -22,10 +22,27 @@ class MFY_Cache {
 	public static function init(): void {
 		// Any published content or relationship can change what the block
 		// should show, so all of them retire the cache.
-		add_action( 'save_post', [ __CLASS__, 'bust' ] );
+		add_action( 'save_post', [ __CLASS__, 'bust_on_save' ], 10, 2 );
 		add_action( 'deleted_post', [ __CLASS__, 'bust' ] );
 		add_action( 'mavo_hub_relationship_changed', [ __CLASS__, 'bust' ] );
 		add_action( 'mavo_hub_type_changed', [ __CLASS__, 'bust' ] );
+	}
+
+	/**
+	 * save_post fires for revisions and for every autosave — once a minute
+	 * while an editor has a post open. Busting on those would keep the cache
+	 * permanently cold for no benefit: neither changes what is published.
+	 */
+	public static function bust_on_save( int $post_id, $post = null ): void {
+		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
+			return;
+		}
+
+		if ( $post && 'auto-draft' === $post->post_status ) {
+			return;
+		}
+
+		self::bust();
 	}
 
 	/** A key carrying the current generation, so a bump orphans it. */
