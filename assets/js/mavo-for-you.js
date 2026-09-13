@@ -131,6 +131,17 @@
 	var pollHandle = null;
 
 	/**
+	 * The impersonal block the server put in the placeholder, on pages that
+	 * carry [geo_related].
+	 *
+	 * Kept as a live node rather than as HTML: render() detaches it from the
+	 * document but cannot destroy it while this reference exists, so clearing
+	 * the history can put the original block back exactly as it was, with no
+	 * second request and nothing to re-parse.
+	 */
+	var impersonalBlock = null;
+
+	/**
 	 * Forget this visit.
 	 *
 	 * Clearing the key is not enough on its own: the tracker holds the whole
@@ -155,13 +166,35 @@
 		} catch (e) {}
 	}
 
-	window.mavoForYouReset = function () {
+	/**
+	 * Clears the history and puts the block back to what an anonymous visitor
+	 * would see.
+	 *
+	 * On a [geo_related] page that means the impersonal block returns — the
+	 * personalized one was only ever standing in its place, so removing the
+	 * personalization should reveal what was underneath, not leave a hole.
+	 * Everywhere else there was nothing underneath, and the block goes.
+	 */
+	function applyReset(host) {
 		resetProfile();
 
-		var host = document.getElementById('mavo-for-you');
-		if (host) {
-			host.innerHTML = '';
+		if (!host) {
+			return;
 		}
+
+		host.innerHTML = '';
+
+		if (impersonalBlock) {
+			host.appendChild(impersonalBlock);
+		}
+
+		var note = el('p', 'mfy__note' + (impersonalBlock ? ' mfy__note--restored' : ''), cfg.labels.resetDone || '');
+		note.setAttribute('role', 'status');
+		host.appendChild(note);
+	}
+
+	window.mavoForYouReset = function () {
+		applyReset(document.getElementById('mavo-for-you'));
 	};
 
 	// -------------------------------------------------------------------------
@@ -627,13 +660,7 @@
 		}
 
 		button.addEventListener('click', function () {
-			resetProfile();
-
-			var note = el('p', 'mfy__note', cfg.labels.resetDone || '');
-			note.setAttribute('role', 'status');
-
-			host.innerHTML = '';
-			host.appendChild(note);
+			applyReset(host);
 		});
 
 		footer.appendChild(button);
@@ -696,6 +723,10 @@
 		if (!host || !cfg.showBlock) {
 			return;
 		}
+
+		// Captured before the first swap, while the server's block is still
+		// the only thing in the placeholder.
+		impersonalBlock = host.querySelector('.mfy--impersonal');
 
 		var requested = false;
 		var ticks = 0;

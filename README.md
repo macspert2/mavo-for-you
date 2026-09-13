@@ -293,12 +293,19 @@ Verlauf löschen* — right-aligned, small, muted. No confirmation dialog: there
 nothing to lose but a few post IDs in this browser, and a modal would block the page.
 The block is replaced by a one-line acknowledgement.
 
+On a `[geo_related]` page the impersonal block comes **back** when the history is
+cleared. The personalised block was only ever standing in its place, so removing the
+personalization reveals what was underneath rather than leaving a hole. The controller
+keeps the server-rendered section as a live node — detached by the swap, never
+destroyed — so restoring it needs no second request and nothing to re-parse. On a page
+with nothing underneath, the block simply goes.
+
 Resetting has to do more than drop the storage key. The tracker holds the whole
 profile in memory, and its save triggers — the periodic save, hiding the tab, leaving
 the page — would each write it straight back. So a reset stops the tracker first, and
 tracking does not resume for the rest of that page view: a reset the visitor has to
 ask for twice is not a reset. The next page load starts a fresh, empty profile.
-`tests/test-frontend.js` covers all three resurrection paths.
+`tests/test-frontend.js` covers all three resurrection paths, and both reset outcomes.
 
 ## Filters
 
@@ -371,8 +378,10 @@ npm.
 - With JS off: page fully usable, no gap, no block.
 - Compare the cached HTML of two anonymous visitors: byte-identical, placeholder empty.
 - Recommendation and recently-viewed links carry `data-mavo-post-id`.
-- Click "Clear my history", then reload: the block should be gone until two new
-  meaningful views accumulate.
+- Click "Clear my history" on a plain post: the block goes, leaving one line of
+  acknowledgement. Reload: nothing until two new meaningful views accumulate.
+- Click it on a `[geo_related]` post: the section should turn back into "À lire aussi",
+  with the same cards the cached page shipped.
 - On a post with `[geo_related]`: the block is in the cached HTML (view source with JS
   off), sits where the shortcode is, and there is no second block after the content.
 - Read two more articles, reload that post: the same section should now be headed

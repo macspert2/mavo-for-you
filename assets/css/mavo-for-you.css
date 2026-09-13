@@ -216,6 +216,19 @@
 	color: var(--mv-color-subtle, #757575);
 }
 
+/*
+ * The same acknowledgement, but under a block that is still there: it needs no
+ * rule of its own above it, and it sits where the link the reader just clicked
+ * used to be.
+ */
+.mfy__note--restored {
+	margin-top: 0.9em;
+	padding-top: 0;
+	border-top: 0;
+	font-size: 0.75em;
+	text-align: right;
+}
+
 /* ----- Administrator debug ------------------------------------------------ */
 
 .mfy-debug {

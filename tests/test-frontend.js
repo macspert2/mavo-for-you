@@ -39,6 +39,10 @@ function makeElement(tag) {
 		getAttribute(key) { return key in this.attributes ? this.attributes[key] : null; },
 		addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); },
 		dispatch(type) { (this.listeners[type] || []).forEach((fn) => fn({})); },
+		/** Minimal class-selector support, which is all the controller uses. */
+		querySelector(selector) {
+			return selector.startsWith('.') ? this.find(selector.slice(1)) : null;
+		},
 		/** Depth-first search for a rendered node, by class name. */
 		find(className) {
 			if (String(this.className).split(' ').includes(className)) { return this; }
@@ -127,11 +131,19 @@ function makeEnvironment(options = {}) {
 		labels: { heading: 'Pour vous', subtitle: 'Sous-titre', recent: 'Consultés récemment', reset: 'Effacer mon historique', resetHint: 'Efface…', resetDone: 'Historique effacé.' },
 	}, options.config || {});
 
+	let impersonal = null;
+	if (options.impersonal) {
+		impersonal = makeElement('section');
+		impersonal.className = 'mfy mfy--impersonal is-visible';
+		impersonal.textContent = 'server-rendered';
+		host.children.push(impersonal);
+	}
+
 	vm.createContext(sandbox);
 	vm.runInContext(SOURCE, sandbox);
 
 	return {
-		sandbox, host, store, fetches, timers,
+		sandbox, host, store, fetches, timers, impersonal,
 		profile: () => (store.mavo_for_you_v0 ? JSON.parse(store.mavo_for_you_v0) : null),
 		advance(seconds) { clock += seconds * 1000; },
 		scrollTo(pct) {
@@ -357,13 +369,10 @@ async function main() {
 
 // 10c. On a [geo_related] page the placeholder arrives pre-filled and sized.
 {
-	const env = makeEnvironment({ storage: seededProfile(NOW) });
+	const env = makeEnvironment({ storage: seededProfile(NOW), impersonal: true });
 	env.host.attributes['data-limit'] = '6';
 	env.host.attributes['data-level'] = 'country';
 	env.host.getAttribute = function (name) { return this.attributes[name] || null; };
-	// The server-rendered impersonal block already occupies the placeholder.
-	env.host.children.push(makeElement('section'));
-	env.host.children[0].className = 'mfy mfy--impersonal';
 
 	env.advance(10);
 	env.tick();
@@ -380,16 +389,60 @@ async function main() {
 	const env = makeEnvironment({
 		storage: seededProfile(NOW),
 		responder: () => ({ show: false, lang: 'fr', recommendations: [], recently_viewed: [] }),
+		impersonal: true,
 	});
-	const impersonal = makeElement('section');
-	impersonal.className = 'mfy mfy--impersonal';
-	env.host.children.push(impersonal);
 
 	env.advance(10);
 	env.tick();
 	await flush();
 
 	check('show:false leaves the server-rendered block untouched', !!env.host.find('mfy--impersonal'));
+}
+
+// 10e. Clearing the history on a [geo_related] page brings that block back.
+{
+	const env = makeEnvironment({ storage: seededProfile(NOW), impersonal: true });
+
+	env.advance(10);
+	env.tick();
+	await flush();
+
+	check('the personalised block replaces the impersonal one', !env.host.find('mfy--impersonal') && !!env.host.find('mfy__reset'));
+
+	env.host.find('mfy__reset').dispatch('click');
+
+	check('clearing the history restores the impersonal block', !!env.host.find('mfy--impersonal'));
+	check('it is the very same node the server rendered', env.host.find('mfy--impersonal') === env.impersonal);
+	check('the personalised block is gone with it', !env.host.find('mfy__reset'));
+	check('an acknowledgement is shown alongside it', !!env.host.find('mfy__note--restored'));
+	check('the history really is cleared', env.profile() === null);
+	env.hide();
+	env.fire('pagehide');
+	check('and stays cleared', env.profile() === null, JSON.stringify(env.store));
+}
+
+// 10f. With nothing underneath, clearing still just empties the block.
+{
+	const env = makeEnvironment({ storage: seededProfile(NOW) });
+	env.advance(10);
+	env.tick();
+	await flush();
+	env.host.find('mfy__reset').dispatch('click');
+
+	check('no impersonal block means nothing to restore', !env.host.find('mfy--impersonal'));
+	check('and the plain acknowledgement is used', !!env.host.find('mfy__note') && !env.host.find('mfy__note--restored'));
+}
+
+// 10g. The programmatic API behaves the same way.
+{
+	const env = makeEnvironment({ storage: seededProfile(NOW), impersonal: true });
+
+	env.advance(10);
+	env.tick();
+	await flush();
+
+	env.sandbox.window.mavoForYouReset();
+	check('window.mavoForYouReset() restores it too', !!env.host.find('mfy--impersonal'));
 }
 
 // 11. A failed request leaves the page alone.
