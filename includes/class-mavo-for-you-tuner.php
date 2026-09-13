@@ -58,12 +58,20 @@ class MFY_Tuner {
 	 * @return array{sessions: array, skipped: int, seconds: float, budget_hit: bool}
 	 */
 	public static function run( string $lang, int $sample, int $budget_seconds = 45 ): array {
-		$started  = microtime( true );
-		$sessions = [];
-		$skipped  = 0;
+		$started    = microtime( true );
+		$sessions   = [];
+		$skips      = [];
+		$health     = [ 'posts' => 0, 'strong_filters' => 0, 'any_filters' => 0, 'geo' => 0, 'hub' => 0 ];
 		$budget_hit = false;
 
 		foreach ( self::sample_posts( $lang, $sample ) as $post_id ) {
+			$h = self::post_health( $post_id, $lang );
+			++$health['posts'];
+			$health['strong_filters'] += $h['strong_filters'] > 0 ? 1 : 0;
+			$health['any_filters']    += $h['any_filters'] > 0 ? 1 : 0;
+			$health['geo']            += $h['has_geo'] ? 1 : 0;
+			$health['hub']            += $h['has_hub'] ? 1 : 0;
+
 			foreach ( array_keys( self::SHAPES ) as $shape ) {
 				if ( microtime( true ) - $started > $budget_seconds ) {
 					$budget_hit = true;
@@ -72,8 +80,8 @@ class MFY_Tuner {
 
 				$session = self::score_one( $post_id, $lang, $shape );
 
-				if ( null === $session ) {
-					++$skipped;
+				if ( isset( $session['skipped'] ) ) {
+					$skips[ $session['skipped'] ] = ( $skips[ $session['skipped'] ] ?? 0 ) + 1;
 					continue;
 				}
 
@@ -81,20 +89,24 @@ class MFY_Tuner {
 			}
 		}
 
+		arsort( $skips );
+
 		return [
 			'sessions'   => $sessions,
-			'skipped'    => $skipped,
+			'skips'      => $skips,
+			'health'     => $health,
 			'seconds'    => round( microtime( true ) - $started, 1 ),
 			'budget_hit' => $budget_hit,
 		];
 	}
 
 	/** One session: build the views, rank, keep the scores. */
-	private static function score_one( int $post_id, string $lang, string $shape ): ?array {
-		$views = self::build_views( $post_id, $lang, $shape );
+	private static function score_one( int $post_id, string $lang, string $shape ): array {
+		$built = self::build_views( $post_id, $lang, $shape );
+		$views = $built['views'];
 
 		if ( ! $views ) {
-			return null;
+			return [ 'skipped' => $shape . ': ' . $built['reason'] ];
 		}
 
 		$ranked = MFY_Scorer::rank( $post_id, $lang, $views, [], null );
@@ -140,31 +152,47 @@ class MFY_Tuner {
 		];
 
 		if ( 'impersonal' === $shape ) {
-			return [ $view( $post_id, 0 ) ];
+			return [ 'views' => [ $view( $post_id, 0 ) ], 'reason' => '' ];
 		}
 
 		$companions = self::companions( $post_id, $lang, $shape );
 
-		if ( count( $companions ) < 2 ) {
-			return []; // Not enough material for this shape on this post.
+		if ( count( $companions['ids'] ) < 2 ) {
+			return [ 'views' => [], 'reason' => $companions['reason'] ?: 'not enough material' ];
 		}
 
 		return [
-			$view( $post_id, 0 ),
-			$view( $companions[0], 400 ),
-			$view( $companions[1], 800 ),
+			'views'  => [
+				$view( $post_id, 0 ),
+				$view( $companions['ids'][0], 400 ),
+				$view( $companions['ids'][1], 800 ),
+			],
+			'reason' => '',
 		];
 	}
 
-	/** Two other posts, chosen the way the shape describes. @return int[] */
+	/**
+	 * Two other posts, chosen the way the shape describes.
+	 *
+	 * Returns the reason as well as the IDs, because "skipped" on its own tells
+	 * you nothing: a shape that cannot be built because the post has no filter
+	 * scores is a different finding from one that cannot be built because
+	 * nothing else shares them.
+	 *
+	 * @return array{ids: int[], reason: string}
+	 */
 	private static function companions( int $post_id, string $lang, string $shape ): array {
 		if ( 'focused' === $shape ) {
 			$places = MFY_Geo::places_for_posts( [ $post_id ], $lang )[ $post_id ] ?? [];
 			$place  = $places['city'] ?? $places['region'] ?? $places['country'] ?? 0;
 
-			return $place
-				? array_slice( MFY_Geo::candidate_ids( $lang, [ $place ], [ $post_id ], 8 ), 0, 2 )
-				: [];
+			if ( ! $place ) {
+				return [ 'ids' => [], 'reason' => 'no geography on the post' ];
+			}
+
+			$ids = array_slice( MFY_Geo::candidate_ids( $lang, [ $place ], [ $post_id ], 8 ), 0, 2 );
+
+			return [ 'ids' => $ids, 'reason' => count( $ids ) < 2 ? 'too few posts in the same place' : '' ];
 		}
 
 		if ( 'thematic' === $shape ) {
@@ -173,14 +201,37 @@ class MFY_Tuner {
 				static fn( $score ) => 2 === (int) $score
 			) );
 
-			return $strong
-				? array_slice( array_column(
-					MFY_Data::get_candidates( $lang, $strong, [ $post_id ], 8 ), 'post_id' ), 0, 2 )
-				: [];
+			if ( ! $strong ) {
+				return [ 'ids' => [], 'reason' => 'no filter scored 2 on the post' ];
+			}
+
+			$ids = array_slice( array_column(
+				MFY_Data::get_candidates( $lang, $strong, [ $post_id ], 8 ), 'post_id' ), 0, 2 );
+
+			return [ 'ids' => $ids, 'reason' => count( $ids ) < 2 ? 'too few posts share its filters' : '' ];
 		}
 
-		// Scattered: any two other posts of this language.
-		return array_slice( self::sample_posts( $lang, 3, [ $post_id ] ), 0, 2 );
+		$ids = array_slice( self::sample_posts( $lang, 3, [ $post_id ] ), 0, 2 );
+
+		return [ 'ids' => $ids, 'reason' => count( $ids ) < 2 ? 'too few posts in this language' : '' ];
+	}
+
+	/**
+	 * What a post brings to the engine before any session is built.
+	 *
+	 * The three things a recommendation can be made from. A post with none of
+	 * them cannot be helped by any threshold.
+	 */
+	public static function post_health( int $post_id, string $lang ): array {
+		$scores = MFY_Data::get_filter_scores( $post_id, $lang );
+
+		return [
+			'strong_filters' => count( array_filter( $scores, static fn( $s ) => 2 === (int) $s ) ),
+			'any_filters'    => count( array_filter( $scores, static fn( $s ) => (int) $s > 0 ) ),
+			'has_geo'        => (bool) ( MFY_Geo::places_for_posts( [ $post_id ], $lang )[ $post_id ] ?? [] ),
+			'has_hub'        => MFY_Hubs::available()
+				&& (bool) MFY_Hubs::session_context( [ [ 'post_id' => $post_id, 'weight' => 1.0 ] ], $lang ),
+		];
 	}
 
 	/**
@@ -311,7 +362,7 @@ class MFY_Tuner {
 
 		$langs  = MFY_Config::site_langs();
 		$lang   = isset( $_POST['lang'] ) ? sanitize_key( wp_unslash( $_POST['lang'] ) ) : ( $langs[0] ?? 'fr' );
-		$sample = isset( $_POST['sample'] ) ? max( 1, min( 60, absint( $_POST['sample'] ) ) ) : 15;
+		$sample = isset( $_POST['sample'] ) ? max( 1, min( 200, absint( $_POST['sample'] ) ) ) : 40;
 		$result = null;
 
 		if ( isset( $_POST['mfy_run'] ) && check_admin_referer( self::ACTION ) ) {
@@ -346,8 +397,8 @@ class MFY_Tuner {
 					<tr>
 						<th scope="row"><label for="mfy-sample"><?php esc_html_e( 'Posts to sample', 'mavo-for-you' ); ?></label></th>
 						<td>
-							<input type="number" name="sample" id="mfy-sample" min="1" max="60" value="<?php echo esc_attr( (string) $sample ); ?>" class="small-text">
-							<p class="description"><?php esc_html_e( 'Each post is scored in four shapes. 15 posts ≈ 60 sessions; the run stops after 45 seconds whatever happens.', 'mavo-for-you' ); ?></p>
+							<input type="number" name="sample" id="mfy-sample" min="1" max="200" value="<?php echo esc_attr( (string) $sample ); ?>" class="small-text">
+							<p class="description"><?php esc_html_e( 'Each post is scored in four shapes. 40 posts ≈ 160 sessions and takes a few seconds; the run stops after 45 seconds whatever happens.', 'mavo-for-you' ); ?></p>
 						</td>
 					</tr>
 				</table>
@@ -362,8 +413,50 @@ class MFY_Tuner {
 	private static function render_results( array $result ): void {
 		$sessions = $result['sessions'];
 		$current  = MFY_Config::min_score();
+		$h        = $result['health'];
+		$n        = max( 1, $h['posts'] );
 		?>
 		<hr>
+		<h2><?php esc_html_e( 'Sample health', 'mavo-for-you' ); ?></h2>
+		<p style="max-width:52em">
+			<?php esc_html_e( 'What the sampled posts bring to the engine before any threshold applies. A post with none of these cannot be helped by tuning.', 'mavo-for-you' ); ?>
+		</p>
+		<table class="widefat striped" style="max-width:52em">
+			<tbody>
+				<tr>
+					<td><?php esc_html_e( 'Posts with at least one filter scored 2', 'mavo-for-you' ); ?></td>
+					<td><strong><?php echo esc_html( sprintf( '%d / %d (%d%%)', $h['strong_filters'], $h['posts'], round( 100 * $h['strong_filters'] / $n ) ) ); ?></strong></td>
+					<td class="description"><?php esc_html_e( 'Eligibility for the filter pool, and the only thing §10 accepts.', 'mavo-for-you' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Posts with any filter scored above 0', 'mavo-for-you' ); ?></td>
+					<td><?php echo esc_html( sprintf( '%d / %d (%d%%)', $h['any_filters'], $h['posts'], round( 100 * $h['any_filters'] / $n ) ) ); ?></td>
+					<td class="description"><?php esc_html_e( 'Scored at all, even weakly.', 'mavo-for-you' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Posts with geography', 'mavo-for-you' ); ?></td>
+					<td><?php echo esc_html( sprintf( '%d / %d (%d%%)', $h['geo'], $h['posts'], round( 100 * $h['geo'] / $n ) ) ); ?></td>
+					<td class="description"><?php esc_html_e( 'A city, region or country from Geo Tagger.', 'mavo-for-you' ); ?></td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Posts inside a hub', 'mavo-for-you' ); ?></td>
+					<td><?php echo esc_html( sprintf( '%d / %d (%d%%)', $h['hub'], $h['posts'], round( 100 * $h['hub'] / $n ) ) ); ?></td>
+					<td class="description"><?php esc_html_e( 'Reachable by the strongest signal there is.', 'mavo-for-you' ); ?></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<?php if ( ! empty( $result['skips'] ) ) : ?>
+			<h3><?php esc_html_e( 'Why shapes were skipped', 'mavo-for-you' ); ?></h3>
+			<table class="widefat striped" style="max-width:52em">
+				<tbody>
+				<?php foreach ( $result['skips'] as $reason => $count ) : ?>
+					<tr><td><?php echo esc_html( $reason ); ?></td><td><?php echo esc_html( (string) $count ); ?></td></tr>
+				<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+
 		<h2><?php esc_html_e( 'What each threshold would cost', 'mavo-for-you' ); ?></h2>
 		<p>
 			<?php
@@ -377,8 +470,8 @@ class MFY_Tuner {
 			if ( $result['budget_hit'] ) {
 				echo ' <strong>' . esc_html__( 'Stopped at the time budget; sample is partial.', 'mavo-for-you' ) . '</strong>';
 			}
-			if ( $result['skipped'] ) {
-				printf( ' ' . esc_html__( '%d shapes skipped for want of material.', 'mavo-for-you' ), (int) $result['skipped'] );
+			if ( $result['skips'] ) {
+				printf( ' ' . esc_html__( '%d shapes skipped — see above for why.', 'mavo-for-you' ), (int) array_sum( $result['skips'] ) );
 			}
 			?>
 		</p>

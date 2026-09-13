@@ -76,6 +76,14 @@ check( 'every row has the same column count',
 check( 'a title containing a quote cannot break the row',
 	! str_contains( MFY_Tuner::to_csv( [ array_merge( session( 'focused', [ 1 ] ), [ 'title' => 'He said "no"' ] ) ] ), '""' ) );
 
+// --- Sample health ------------------------------------------------------------
+// post_health() is what turns "24 skipped" into a finding rather than a shrug.
+check( 'post_health reports all four signals', (function () {
+	$r = new ReflectionMethod( 'MFY_Tuner', 'post_health' );
+	return $r->isPublic();
+} )() );
+check( 'the sweep is unaffected by health reporting', count( MFY_Tuner::sweep( $sessions ) ) === count( MFY_Tuner::SWEEP ) );
+
 echo "\n";
 printf( "%d failure(s)\n", $GLOBALS['FAILED'] );
 exit( $GLOBALS['FAILED'] ? 1 : 0 );
