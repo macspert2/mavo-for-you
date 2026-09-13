@@ -229,6 +229,66 @@
 	text-align: right;
 }
 
+/* ----- Already read -------------------------------------------------------- */
+
+/*
+ * Two treatments, because the two contexts allow different things.
+ *
+ * A tile is a box: it can carry a visible mark without moving anything, since
+ * .mv-tile is already positioned and the check is absolute. A link inside a
+ * paragraph is not: the marks are applied after load, so anything that occupied
+ * space would rewrap the text around it. Prose links therefore only change
+ * colour — no glyph, no padding, no pseudo-element with content.
+ *
+ * To soften: raise the two opacity values. To switch off: the
+ * `mavo_for_you_mark_read` filter, or override these rules in the theme.
+ */
+
+.mv-tile.mfy-read .mv-tile__img {
+	opacity: 0.5;
+	filter: saturate(0.55);
+}
+
+.mv-tile.mfy-read .mv-tile__title a,
+.mv-tile.mfy-read .mv-tile__link {
+	color: var(--mv-color-subtle, #757575);
+}
+
+/* Over the image only: on a tile with no media the corner belongs to the text. */
+.mv-tile.mfy-read:not(.mv-tile--no-media)::after {
+	content: "";
+	position: absolute;
+	top: 0.55rem;
+	right: 0.55rem;
+	width: 1.35rem;
+	height: 1.35rem;
+	border-radius: 50%;
+	background-color: rgba(255, 255, 255, 0.92);
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23555'%3E%3Cpath d='M13.5 3.5 6 11 2.5 7.5 1.4 8.6 6 13.2l8.6-8.6z'/%3E%3C/svg%3E");
+	background-position: center;
+	background-size: 0.8rem;
+	background-repeat: no-repeat;
+	box-shadow: 0 1px 4px rgba(58, 58, 58, 0.25);
+	pointer-events: none;
+}
+
+/*
+ * Prose links: colour only.
+ *
+ * The site styles no :visited state at all, so this is the only read-signal a
+ * reader gets inside an article — deliberately quiet, and reversible in one
+ * line if it turns out to be too much.
+ */
+.entry-content a.mfy-read-link {
+	color: var(--mv-color-subtle, #757575);
+	text-decoration-color: currentColor;
+}
+
+.entry-content a.mfy-read-link:hover,
+.entry-content a.mfy-read-link:focus-visible {
+	color: var(--mv-color-primary, #4e74a5);
+}
+
 /* ----- Administrator debug ------------------------------------------------ */
 
 .mfy-debug {

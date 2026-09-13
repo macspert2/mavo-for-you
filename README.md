@@ -286,6 +286,48 @@ not another content facet, and a second badge language on the same tiles would r
 an ad unit — which §20 explicitly warns against. The eyebrow says it in the theme's own
 voice, and the card gets one hairline of warm-brown emphasis, nothing more.
 
+## Already read
+
+Links to pages opened during this visit are marked, in two ways, because one treatment
+cannot serve both contexts:
+
+| Context | Treatment | Layout cost |
+|---|---|---|
+| Tiles (`.mv-tile`) | image dimmed, title muted, a check in the corner | none — the tile is positioned, the check is absolute |
+| Prose (`.entry-content`) | colour change only | none |
+| Nav, footer, "Consultés récemment" | nothing | — |
+
+Prose links get **no glyph and no pseudo-element with content**, deliberately. The marks
+are applied after load, because that is when localStorage can first be read, so anything
+occupying space would rewrap the paragraph around it. There is no version of an inline
+badge that avoids this — the restyling is the whole of what is safe.
+
+Matching runs twice over: `data-mavo-post-id` first (exact, and on everything this plugin
+generates — the §22 foundation), then the URL path. The path is what makes links written
+into articles years ago matchable at all.
+
+**Paths, not slugs.** Permalinks are `/YYYY/MM/slug/`, so the last segment *is* the slug —
+which is exactly the problem: `/tag/tower-of-london/` and the post share a last segment,
+and marking the archive as read would be wrong. The full path is unambiguous, and
+normalising it (lowercase, no query, no fragment, no trailing slash) costs nothing.
+
+The path is already in hand — `location.pathname` on each tracked view — so storing it
+adds about **1 KB** to a 5 MB quota and is a new optional field on the existing schema, so
+no stored profile is invalidated. It **never leaves the browser**: the REST payload is
+unchanged, and a test asserts it.
+
+Marks reflect **this visit only** — 20 views, 24 hours. A reader returning next week sees
+nothing marked, unlike the browser's own visited-link colour, which the theme does not
+style at all. That is the privacy choice, not an oversight.
+
+Switch off with `mavo_for_you_mark_read`; soften by overriding the two opacity values in
+`assets/css/mavo-for-you.css`; change where marks may go with
+`mavo_for_you_mark_read_selectors`.
+
+The script therefore loads on ordinary pages too (archives, the homepage), where it does
+nothing but mark — no request, no tracking. `mavo_for_you_mark_read_everywhere` confines
+it to pages that already run the recommendation request.
+
 ## Clearing the history
 
 The block ends with a quiet text button — *Effacer mon historique / Clear my history /
@@ -332,6 +374,9 @@ Hubs: `mavo_for_you_max_hub_recommendations`, `mavo_for_you_hub_max_depth`,
 Geography: `mavo_for_you_geo_levels`, `mavo_for_you_geo_points`,
 `mavo_for_you_geo_focus_threshold`, `mavo_for_you_geo_reserved_ratio`,
 `mavo_for_you_geo_reserved_slots`, `mavo_for_you_geo_pool_size`.
+
+Already read: `mavo_for_you_mark_read`, `mavo_for_you_mark_read_everywhere`,
+`mavo_for_you_mark_read_selectors`.
 
 Behaviour: `mavo_for_you_track_post`, `mavo_for_you_show_block`,
 `mavo_for_you_excluded_page_slugs`,
@@ -382,6 +427,10 @@ npm.
   acknowledgement. Reload: nothing until two new meaningful views accumulate.
 - Click it on a `[geo_related]` post: the section should turn back into "À lire aussi",
   with the same cards the cached page shipped.
+- Read two articles, then open an archive page: tiles for both should be dimmed with a
+  check. Links to them inside another article should be muted, with the paragraph
+  wrapping exactly as before.
+- Clear the history: every mark disappears without a reload.
 - On a post with `[geo_related]`: the block is in the cached HTML (view source with JS
   off), sits where the shortcode is, and there is no second block after the content.
 - Read two more articles, reload that post: the same section should now be headed

@@ -177,6 +177,7 @@
 	 */
 	function applyReset(host) {
 		resetProfile();
+		unmarkReadLinks();
 
 		if (!host) {
 			return;
@@ -196,6 +197,135 @@
 	window.mavoForYouReset = function () {
 		applyReset(document.getElementById('mavo-for-you'));
 	};
+
+	// -------------------------------------------------------------------------
+	// Already-read marking
+	// -------------------------------------------------------------------------
+
+	var TILE_CLASS = 'mfy-read';
+	var LINK_CLASS = 'mfy-read-link';
+
+	/**
+	 * A URL path reduced to something two links can be compared on.
+	 *
+	 * Lowercased, without query or fragment, and with the trailing slash
+	 * dropped so /a/b/ and /a/b are the same page — which they are.
+	 */
+	function normalizePath(path) {
+		if (!path) {
+			return '';
+		}
+
+		var clean = String(path).split('#')[0].split('?')[0].toLowerCase();
+
+		if (clean.length > 1 && clean.charAt(clean.length - 1) === '/') {
+			clean = clean.slice(0, -1);
+		}
+
+		return clean || '/';
+	}
+
+	/**
+	 * What counts as read: post IDs and paths, as lookup maps.
+	 *
+	 * Two keys because there are two kinds of link. Anything this plugin
+	 * generates carries data-mavo-post-id and matches exactly; a link written
+	 * into an article years ago carries nothing but its href, and the path is
+	 * the only thing both sides have.
+	 */
+	function readKeys(profile) {
+		var ids = {};
+		var paths = {};
+
+		profile.views.forEach(function (view) {
+			if (view.post_id) {
+				ids[String(view.post_id)] = true;
+			}
+			if (view.path) {
+				paths[normalizePath(view.path)] = true;
+			}
+		});
+
+		return { ids: ids, paths: paths };
+	}
+
+	function linkIsRead(link, keys) {
+		var id = link.getAttribute('data-mavo-post-id');
+		if (id && keys.ids[String(id)]) {
+			return true;
+		}
+
+		var href = link.getAttribute('href');
+		if (!href || href.charAt(0) === '#') {
+			return false;
+		}
+
+		var url;
+		try {
+			url = new URL(href, window.location.origin);
+		} catch (e) {
+			return false;
+		}
+
+		// Never mark a link that leaves the site, whatever its path looks like.
+		if (url.hostname !== window.location.hostname) {
+			return false;
+		}
+
+		return !!keys.paths[normalizePath(url.pathname)];
+	}
+
+	/**
+	 * Marks links to pages already opened this visit.
+	 *
+	 * Two treatments, because one size cannot fit both. A tile is a box with
+	 * room in it, so it can carry a visible mark. A link inside a paragraph
+	 * cannot: anything appended to it after load rewraps the text around it,
+	 * and this data only exists after load. So prose links are restyled and
+	 * never added to — the reflow that would otherwise be unavoidable simply
+	 * never happens.
+	 */
+	function markReadLinks(profile) {
+		if (!cfg.markRead || !profile.views.length) {
+			return;
+		}
+
+		var selectors = cfg.readSelectors || {};
+		var keys = readKeys(profile);
+		var links = document.querySelectorAll('a[href]');
+
+		for (var i = 0; i < links.length; i++) {
+			var link = links[i];
+
+			if (selectors.skip && link.closest(selectors.skip)) {
+				continue;
+			}
+
+			var tile = selectors.tile ? link.closest(selectors.tile) : null;
+
+			if (tile) {
+				if (linkIsRead(link, keys)) {
+					tile.classList.add(TILE_CLASS);
+				}
+				continue;
+			}
+
+			if (selectors.prose && link.closest(selectors.prose) && linkIsRead(link, keys)) {
+				link.classList.add(LINK_CLASS);
+			}
+		}
+	}
+
+	/** Clearing the history has to clear the marks with it. */
+	function unmarkReadLinks() {
+		['.' + TILE_CLASS, '.' + LINK_CLASS].forEach(function (selector) {
+			var marked = document.querySelectorAll(selector);
+			for (var i = 0; i < marked.length; i++) {
+				marked[i].classList.remove(TILE_CLASS);
+				marked[i].classList.remove(LINK_CLASS);
+			}
+		});
+	}
 
 	// -------------------------------------------------------------------------
 	// Signals: search + referral
@@ -304,12 +434,19 @@
 			this.entry = {
 				post_id: this.postId,
 				lang: cfg.lang,
+				path: normalizePath(window.location.pathname),
 				first_seen: now(),
 				last_seen: now(),
 				duration_seconds: 0,
 				max_scroll_pct: 0
 			};
 			this.profile.views.push(this.entry);
+		}
+
+		// An entry stored before paths were recorded gets one now, rather than
+		// waiting for the profile to expire.
+		if (!this.entry.path) {
+			this.entry.path = normalizePath(window.location.pathname);
 		}
 
 		// A revisit updates the existing record rather than appending a new
@@ -636,6 +773,11 @@
 		host.innerHTML = '';
 		host.appendChild(section);
 
+		// The block arrives after the first pass, so its own links have not
+		// been looked at yet. Recommendations are unread by construction, but
+		// the pass costs nothing and keeps the rule in one place.
+		markReadLinks(loadProfile());
+
 		window.requestAnimationFrame(function () {
 			section.classList.add('is-visible');
 		});
@@ -700,6 +842,10 @@
 	function boot() {
 		var profile = loadProfile();
 		var dirty = false;
+
+		// Before anything else: this works on every page the script loads on,
+		// including archives and the homepage, and needs no request.
+		markReadLinks(profile);
 
 		if (recordSearch(profile)) {
 			dirty = true;

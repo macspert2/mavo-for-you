@@ -158,31 +158,37 @@ class MFY_Render {
 	// -------------------------------------------------------------------------
 
 	public static function enqueue(): void {
-		$show_block = self::should_show_block();
-		$is_search  = is_search();
-
-		// The script also runs on search result pages, where it does nothing
-		// but record the search term for later.
-		if ( ! $show_block && ! $is_search ) {
+		if ( is_admin() || is_feed() || is_404() ) {
 			return;
 		}
 
-		$lang = $is_search && ! $show_block
-			? ( function_exists( 'pll_current_language' ) ? (string) ( pll_current_language( 'slug' ) ?: '' ) : '' )
-			: self::current_lang();
+		$show_block = self::should_show_block();
+		$is_search  = is_search();
+		$mark_read  = MFY_Config::mark_read_enabled() && MFY_Config::mark_read_everywhere();
+
+		// Three reasons to load: the block, a search page (where the script
+		// only records the search term), and any other page where links to
+		// already-read articles should be marked.
+		if ( ! $show_block && ! $is_search && ! $mark_read ) {
+			return;
+		}
+
+		$lang = $show_block
+			? self::current_lang()
+			: ( function_exists( 'pll_current_language' ) ? (string) ( pll_current_language( 'slug' ) ?: '' ) : '' );
 
 		if ( '' === $lang || ! MFY_Config::is_enabled_for_lang( $lang ) ) {
 			return;
 		}
 
-		if ( $show_block ) {
-			wp_enqueue_style(
-				'mavo-for-you',
-				MFY_PLUGIN_URL . 'assets/css/mavo-for-you.css',
-				[],
-				self::asset_version( 'assets/css/mavo-for-you.css' )
-			);
-		}
+		// The stylesheet carries the read-marks too, so it travels with the
+		// script rather than only with the block.
+		wp_enqueue_style(
+			'mavo-for-you',
+			MFY_PLUGIN_URL . 'assets/css/mavo-for-you.css',
+			[],
+			self::asset_version( 'assets/css/mavo-for-you.css' )
+		);
 
 		wp_enqueue_script(
 			'mavo-for-you',
@@ -208,12 +214,19 @@ class MFY_Render {
 	private static function config( string $lang, bool $show_block ): array {
 		$debug = self::debug_requested();
 
+		// 'content' tracks and asks for recommendations; 'search' only records
+		// the search term; 'mark' does neither and exists solely to mark links
+		// to what has already been read.
+		$mode = $show_block ? 'content' : ( is_search() ? 'search' : 'mark' );
+
 		$config = [
 			'endpoint'           => MFY_Rest::url(),
 			'postId'             => $show_block ? (int) get_queried_object_id() : 0,
 			'maxLimit'           => MFY_Config::shortcode_max_limit(),
 			'lang'               => $lang,
-			'mode'               => $show_block ? 'content' : 'search',
+			'mode'               => $mode,
+			'markRead'           => MFY_Config::mark_read_enabled(),
+			'readSelectors'      => MFY_Config::mark_read_selectors(),
 			'showBlock'          => $show_block,
 			'storageKey'         => MFY_Config::STORAGE_KEY,
 			'schemaVersion'      => MFY_Config::PROFILE_SCHEMA_VERSION,

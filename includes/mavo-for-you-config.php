@@ -205,6 +205,42 @@ class MFY_Config {
 	}
 
 	// -------------------------------------------------------------------------
+	// Already-read marking
+	// -------------------------------------------------------------------------
+
+	/** Mark links to pages this visitor has already opened during the visit. */
+	public static function mark_read_enabled(): bool {
+		return (bool) apply_filters( 'mavo_for_you_mark_read', true );
+	}
+
+	/**
+	 * Load the marker on pages that have no block of their own.
+	 *
+	 * Archive grids and the homepage are where most tiles live, so restricting
+	 * the marker to pages that already run the recommendation request would
+	 * leave it off exactly where it is most useful. The cost is one small
+	 * deferred script on those pages — no REST call, no tracking, no cookies.
+	 */
+	public static function mark_read_everywhere(): bool {
+		return (bool) apply_filters( 'mavo_for_you_mark_read_everywhere', true );
+	}
+
+	/**
+	 * Where marks may and may not go.
+	 *
+	 * 'skip' wins over everything: navigation and the footer are wayfinding,
+	 * not reading, and every entry under "Consultés récemment" is read by
+	 * definition, so marking those is pure noise.
+	 */
+	public static function mark_read_selectors(): array {
+		return (array) apply_filters( 'mavo_for_you_mark_read_selectors', [
+			'skip'  => '#mavo-nav, .mavo-nav, .site-footer, .mfy__recent, .mfy__footer',
+			'tile'  => '.mv-tile',
+			'prose' => '.entry-content',
+		] );
+	}
+
+	// -------------------------------------------------------------------------
 	// [geo_related] — the impersonal block
 	// -------------------------------------------------------------------------
 

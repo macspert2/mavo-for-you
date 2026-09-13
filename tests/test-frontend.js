@@ -23,18 +23,59 @@ function check(label, ok, detail) {
 // The browser, approximately
 // ---------------------------------------------------------------------------
 
+/** Every element ever created, so document.querySelectorAll can scan them. */
+let registry = [];
+
+/** Does this element match a simple selector (.class, #id or tag)? */
+function matches(el, selector) {
+	return selector.split(',').map((s) => s.trim()).filter(Boolean).some((sel) => {
+		if (sel.startsWith('.')) {
+			return String(el.className).split(/\s+/).includes(sel.slice(1));
+		}
+		if (sel.startsWith('#')) {
+			return el.attributes.id === sel.slice(1);
+		}
+		if (sel.endsWith('[href]')) {
+			return el.tagName === sel.slice(0, -6) && el.attributes.href != null;
+		}
+		return el.tagName === sel;
+	});
+}
+
 function makeElement(tag) {
-	return {
+	const el = {
 		tagName: tag,
 		className: '',
 		textContent: '',
 		children: [],
+		parentNode: null,
 		attributes: {},
 		listeners: {},
-		classList: { add() {}, remove() {} },
+		classList: {
+			add(name) {
+				const set = new Set(String(el.className).split(/\s+/).filter(Boolean));
+				set.add(name);
+				el.className = [...set].join(' ');
+			},
+			remove(name) {
+				const set = new Set(String(el.className).split(/\s+/).filter(Boolean));
+				set.delete(name);
+				el.className = [...set].join(' ');
+			},
+			contains(name) { return String(el.className).split(/\s+/).includes(name); },
+		},
+		/** Nearest self-or-ancestor matching the selector, like the real thing. */
+		closest(selector) {
+			let node = el;
+			while (node) {
+				if (matches(node, selector)) { return node; }
+				node = node.parentNode;
+			}
+			return null;
+		},
 		set innerHTML(value) { if (value === '') { this.children = []; } },
 		get innerHTML() { return ''; },
-		appendChild(child) { this.children.push(child); return child; },
+		appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
 		setAttribute(key, value) { this.attributes[key] = value; },
 		getAttribute(key) { return key in this.attributes ? this.attributes[key] : null; },
 		addEventListener(type, fn) { (this.listeners[type] = this.listeners[type] || []).push(fn); },
@@ -53,10 +94,27 @@ function makeElement(tag) {
 			return null;
 		},
 	};
+
+	registry.push(el);
+	return el;
+}
+
+/** Builds <a href> inside an optional container chain, for the marking tests. */
+function makeLink(href, attrs = {}, parentClass = null) {
+	const link = makeElement('a');
+	link.setAttribute('href', href);
+	Object.entries(attrs).forEach(([k, v]) => link.setAttribute(k, v));
+	if (parentClass) {
+		const parent = makeElement('div');
+		parent.className = parentClass;
+		parent.appendChild(link);
+	}
+	return link;
 }
 
 function makeEnvironment(options = {}) {
 	const store = Object.assign({}, options.storage || {});
+	registry = [];
 	const host = makeElement('div');
 	const timers = [];
 	const fetches = [];
@@ -89,6 +147,7 @@ function makeEnvironment(options = {}) {
 			return Promise.resolve({ ok: payload !== null, json: () => Promise.resolve(payload) });
 		},
 		document: {
+			querySelectorAll(selector) { return registry.filter((el) => matches(el, selector)); },
 			readyState: 'complete',
 			visibilityState: options.visibility || 'visible',
 			documentElement: { scrollHeight: 4000, offsetHeight: 4000, clientHeight: 800, scrollTop: 0 },
@@ -98,7 +157,12 @@ function makeEnvironment(options = {}) {
 			getElementById(id) { return id === 'mavo-for-you' ? host : null; },
 			createElement: makeElement,
 		},
-		location: { search: options.search || '', hostname: 'www.mamanvoyage.com' },
+		location: {
+			search: options.search || '',
+			hostname: 'www.mamanvoyage.com',
+			origin: 'https://www.mamanvoyage.com',
+			pathname: options.pathname || '/2016/05/current-post/',
+		},
 	};
 
 	sandbox.window = sandbox;
@@ -128,8 +192,18 @@ function makeEnvironment(options = {}) {
 		minMeaningfulViews: 2,
 		saveInterval: 15,
 		debug: false,
+		markRead: true,
+		readSelectors: {
+			skip: '#mavo-nav, .mavo-nav, .site-footer, .mfy__recent, .mfy__footer',
+			tile: '.mv-tile',
+			prose: '.entry-content',
+		},
 		labels: { heading: 'Pour vous', subtitle: 'Sous-titre', recent: 'Consultés récemment', reset: 'Effacer mon historique', resetHint: 'Efface…', resetDone: 'Historique effacé.' },
 	}, options.config || {});
+
+	// Anything the page itself contains must exist before the controller runs,
+	// exactly as server-rendered markup does.
+	const dom = options.dom ? options.dom() : null;
 
 	let impersonal = null;
 	if (options.impersonal) {
@@ -143,7 +217,7 @@ function makeEnvironment(options = {}) {
 	vm.runInContext(SOURCE, sandbox);
 
 	return {
-		sandbox, host, store, fetches, timers, impersonal,
+		sandbox, host, store, fetches, timers, impersonal, dom,
 		profile: () => (store.mavo_for_you_v0 ? JSON.parse(store.mavo_for_you_v0) : null),
 		advance(seconds) { clock += seconds * 1000; },
 		scrollTo(pct) {
@@ -443,6 +517,141 @@ async function main() {
 
 	env.sandbox.window.mavoForYouReset();
 	check('window.mavoForYouReset() restores it too', !!env.host.find('mfy--impersonal'));
+}
+
+// 12. Already-read marking.
+{
+	// A profile holding one article, by id and by path.
+	const read = {
+		mavo_for_you_v0: JSON.stringify({
+			version: 1,
+			views: [{
+				post_id: 7, lang: 'fr', path: '/2016/05/tower-of-london',
+				first_seen: NOW - 600, last_seen: NOW - 300, duration_seconds: 90, max_scroll_pct: 80,
+			}],
+			searches: [], referral: null, updated: NOW - 300,
+		}),
+	};
+
+	const env = makeEnvironment({
+		storage: read,
+		config: { minMeaningfulViews: 99 }, // keep the request out of the way
+		dom: () => ({
+			tile: makeLink('https://www.mamanvoyage.com/2016/05/tower-of-london/', {}, 'mv-tile'),
+			tileUnread: makeLink('https://www.mamanvoyage.com/2020/01/somewhere-else/', {}, 'mv-tile'),
+			byId: makeLink('https://www.mamanvoyage.com/whatever/', { 'data-mavo-post-id': '7' }, 'mv-tile'),
+			prose: makeLink('/2016/05/tower-of-london/', {}, 'entry-content'),
+			messy: makeLink('https://www.mamanvoyage.com/2016/05/Tower-Of-London?utm=x#top', {}, 'entry-content'),
+			archive: makeLink('https://www.mamanvoyage.com/tag/tower-of-london/', {}, 'entry-content'),
+			external: makeLink('https://example.com/2016/05/tower-of-london/', {}, 'entry-content'),
+			nav: makeLink('https://www.mamanvoyage.com/2016/05/tower-of-london/', {}, 'mavo-nav'),
+			footer: makeLink('https://www.mamanvoyage.com/2016/05/tower-of-london/', {}, 'site-footer'),
+			recent: makeLink('https://www.mamanvoyage.com/2016/05/tower-of-london/', {}, 'mfy__recent'),
+			anchor: makeLink('#section', {}, 'entry-content'),
+		}),
+	});
+	const d = env.dom;
+
+	check('a tile linking to a read article is marked', d.tile.parentNode.classList.contains('mfy-read'));
+	check('a tile linking elsewhere is not', !d.tileUnread.parentNode.classList.contains('mfy-read'));
+	check('data-mavo-post-id matches regardless of href', d.byId.parentNode.classList.contains('mfy-read'));
+	check('the tile is marked, not the link inside it', !d.tile.classList.contains('mfy-read-link'));
+
+	check('a prose link to a read article is restyled', d.prose.classList.contains('mfy-read-link'));
+	check('case, query and fragment do not defeat the match', d.messy.classList.contains('mfy-read-link'));
+	check('a prose link gets no tile class', !d.prose.classList.contains('mfy-read'));
+
+	// The reason this stores paths rather than slugs: /tag/tower-of-london/ and
+	// the post itself share a last segment, and only one of them has been read.
+	check('an archive sharing the last path segment is not marked', !d.archive.classList.contains('mfy-read-link'));
+	check('an external link with the same path is not marked', !d.external.classList.contains('mfy-read-link'));
+	check('a bare anchor is not marked', !d.anchor.classList.contains('mfy-read-link'));
+
+	check('navigation is left alone', !d.nav.parentNode.classList.contains('mfy-read') && !d.nav.classList.contains('mfy-read-link'));
+	check('the footer is left alone', !d.footer.parentNode.classList.contains('mfy-read'));
+	check('"recently viewed" is left alone — every entry there is read', !d.recent.parentNode.classList.contains('mfy-read'));
+}
+
+// 12b. The current page records its own path, for the next page to match on.
+{
+	const env = makeEnvironment({ pathname: '/2016/05/kew-gardens/' });
+	check('the visited path is stored', env.profile().views[0].path === '/2016/05/kew-gardens', env.profile().views[0].path);
+	check('it is stored normalised', !env.profile().views[0].path.endsWith('/'));
+	check('the path is never sent to the server', true); // asserted in 12d via the payload
+}
+
+// 12c. Clearing the history clears the marks.
+{
+	const env = makeEnvironment({
+		storage: { mavo_for_you_v0: JSON.stringify({
+			version: 1,
+			views: [
+				{ post_id: 7, lang: 'fr', path: '/a/read-one', first_seen: NOW - 600, last_seen: NOW - 300, duration_seconds: 90, max_scroll_pct: 80 },
+				{ post_id: 8, lang: 'fr', path: '/a/read-two', first_seen: NOW - 900, last_seen: NOW - 800, duration_seconds: 90, max_scroll_pct: 80 },
+			],
+			searches: [], referral: null, updated: NOW - 300,
+		}) },
+		dom: () => ({
+			tile: makeLink('/a/read-one/', {}, 'mv-tile'),
+			prose: makeLink('/a/read-two/', {}, 'entry-content'),
+		}),
+	});
+
+	check('marks are applied before the reset', env.dom.tile.parentNode.classList.contains('mfy-read') && env.dom.prose.classList.contains('mfy-read-link'));
+
+	env.advance(10);
+	env.tick();
+	await flush();
+	env.host.find('mfy__reset').dispatch('click');
+
+	check('clearing the history unmarks the tile', !env.dom.tile.parentNode.classList.contains('mfy-read'));
+	check('and unmarks the prose link', !env.dom.prose.classList.contains('mfy-read-link'));
+}
+
+// 12d. The path stays in the browser.
+{
+	const env = makeEnvironment({ storage: seededProfile(NOW) });
+	env.advance(10);
+	env.tick();
+	await flush();
+	const sent = Object.keys(env.fetches[0].body.views[0]).sort().join(',');
+	check('the REST payload still carries no path', sent === 'duration_seconds,last_seen,max_scroll_pct,post_id', sent);
+}
+
+// 12e-bis. The off switch.
+{
+	const env = makeEnvironment({
+		storage: { mavo_for_you_v0: JSON.stringify({
+			version: 1,
+			views: [{ post_id: 7, lang: 'fr', path: '/a/read-one', first_seen: NOW - 600, last_seen: NOW - 300, duration_seconds: 90, max_scroll_pct: 80 }],
+			searches: [], referral: null, updated: NOW - 300,
+		}) },
+		config: { markRead: false },
+		dom: () => ({ tile: makeLink('/a/read-one/', {}, 'mv-tile') }),
+	});
+	check('markRead:false marks nothing at all', !env.dom.tile.parentNode.classList.contains('mfy-read'));
+}
+
+// 12f. A page with no block of its own still marks.
+{
+	const env = makeEnvironment({
+		storage: { mavo_for_you_v0: JSON.stringify({
+			version: 1,
+			views: [{ post_id: 7, lang: 'fr', path: '/a/read-one', first_seen: NOW - 600, last_seen: NOW - 300, duration_seconds: 90, max_scroll_pct: 80 }],
+			searches: [], referral: null, updated: NOW - 300,
+		}) },
+		config: { mode: 'mark', postId: 0, showBlock: false },
+		dom: () => ({ tile: makeLink('/a/read-one/', {}, 'mv-tile') }),
+	});
+	check('an archive page marks its tiles', env.dom.tile.parentNode.classList.contains('mfy-read'));
+	check('without tracking a view', env.profile().views.length === 1, JSON.stringify(env.profile().views.map((v) => v.post_id)));
+	check('and without calling the endpoint', env.fetches.length === 0);
+}
+
+// 12e. Nothing to mark, nothing done.
+{
+	const env = makeEnvironment({ dom: () => ({ tile: makeLink('/a/anything/', {}, 'mv-tile') }) });
+	check('an empty profile marks nothing', !env.dom.tile.parentNode.classList.contains('mfy-read'));
 }
 
 // 11. A failed request leaves the page alone.
