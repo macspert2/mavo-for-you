@@ -57,20 +57,29 @@ class MFY_Tuner {
 	 *
 	 * @return array{sessions: array, skipped: int, seconds: float, budget_hit: bool}
 	 */
-	public static function run( string $lang, int $sample, int $budget_seconds = 45 ): array {
+	public static function run( string $lang, int $sample, int $budget_seconds = 45, string $order = 'views' ): array {
 		$started    = microtime( true );
 		$sessions   = [];
 		$skips      = [];
-		$health     = [ 'posts' => 0, 'strong_filters' => 0, 'any_filters' => 0, 'geo' => 0, 'hub' => 0 ];
+		$health     = [ 'posts' => 0, 'strong_filters' => 0, 'any_filters' => 0, 'geo' => 0, 'hub' => 0, 'sampled_ids' => [], 'views' => [] ];
 		$budget_hit = false;
 
-		foreach ( self::sample_posts( $lang, $sample ) as $post_id ) {
+		$sampled = self::sample_posts( $lang, $sample, [], $order );
+
+		// One query for every view count, rather than one per post below.
+		if ( $sampled ) {
+			update_meta_cache( 'post', $sampled );
+		}
+
+		foreach ( $sampled as $post_id ) {
+			$health['views'][] = (int) get_post_meta( $post_id, 'views', true );
 			$h = self::post_health( $post_id, $lang );
 			++$health['posts'];
 			$health['strong_filters'] += $h['strong_filters'] > 0 ? 1 : 0;
 			$health['any_filters']    += $h['any_filters'] > 0 ? 1 : 0;
 			$health['geo']            += $h['has_geo'] ? 1 : 0;
 			$health['hub']            += $h['has_hub'] ? 1 : 0;
+			$health['sampled_ids'][]   = $post_id;
 
 			foreach ( array_keys( self::SHAPES ) as $shape ) {
 				if ( microtime( true ) - $started > $budget_seconds ) {
@@ -90,6 +99,17 @@ class MFY_Tuner {
 		}
 
 		arsort( $skips );
+
+		// Independent cross-check. If the sample says 10% and the travel
+		// finder's own tables say 90%, the sample is wrong — most likely the
+		// language filter — and nothing else on this page can be trusted.
+		$health['site_weighted']  = class_exists( 'TVF_Store' )
+			? ( TVF_Store::count_weighted_posts()[ $lang ] ?? 0 )
+			: null;
+		$health['site_published'] = self::published_count( $lang );
+		$health['sample_langs']   = self::sampled_languages( $health['sampled_ids'] );
+		$health['order']          = $order;
+		$health['views_median']   = self::percentile( $health['views'], 50 );
 
 		return [
 			'sessions'   => $sessions,
@@ -242,7 +262,7 @@ class MFY_Tuner {
 	 *
 	 * @return int[]
 	 */
-	private static function sample_posts( string $lang, int $n, array $exclude = [] ): array {
+	private static function sample_posts( string $lang, int $n, array $exclude = [], string $order = 'random' ): array {
 		$args = [
 			'post_type'              => MFY_Config::candidate_post_types(),
 			'post_status'            => 'publish',
@@ -254,6 +274,15 @@ class MFY_Tuner {
 			'update_post_meta_cache' => false,
 			'update_post_term_cache' => false,
 		];
+
+		if ( 'views' === $order ) {
+			// The site's own view counter, the same meta the travel finder
+			// ranks on. Note the join is inner: a post with no views row is
+			// absent rather than last, which for "most read" is what you want.
+			$args['meta_key'] = 'views';
+			$args['orderby']  = 'meta_value_num';
+			$args['order']    = 'DESC';
+		}
 
 		if ( function_exists( 'pll_get_post_language' ) ) {
 			$args['lang'] = $lang; // Polylang reads this.
@@ -337,6 +366,40 @@ class MFY_Tuner {
 		return $out;
 	}
 
+	/** Published posts in a language, for the coverage cross-check. */
+	private static function published_count( string $lang ): int {
+		if ( function_exists( 'pll_count_posts' ) ) {
+			return (int) pll_count_posts( $lang );
+		}
+
+		$counts = wp_count_posts( 'post' );
+
+		return (int) ( $counts->publish ?? 0 );
+	}
+
+	/**
+	 * The languages the sample actually drew from.
+	 *
+	 * If this shows more than the language asked for, get_posts ignored the
+	 * Polylang argument and every filter-score lookup was made against the
+	 * wrong language — which would explain a low coverage figure without any
+	 * content being missing at all.
+	 *
+	 * @param int[] $ids
+	 */
+	private static function sampled_languages( array $ids ): array {
+		$out = [];
+
+		foreach ( $ids as $id ) {
+			$l = MFY_Data::post_lang( $id ) ?: '?';
+			$out[ $l ] = ( $out[ $l ] ?? 0 ) + 1;
+		}
+
+		arsort( $out );
+
+		return $out;
+	}
+
 	/** Nearest-rank percentile. Small samples do not deserve interpolation. */
 	public static function percentile( array $values, int $p ): float {
 		$values = array_values( array_filter( $values, static fn( $v ) => null !== $v ) );
@@ -363,10 +426,11 @@ class MFY_Tuner {
 		$langs  = MFY_Config::site_langs();
 		$lang   = isset( $_POST['lang'] ) ? sanitize_key( wp_unslash( $_POST['lang'] ) ) : ( $langs[0] ?? 'fr' );
 		$sample = isset( $_POST['sample'] ) ? max( 1, min( 200, absint( $_POST['sample'] ) ) ) : 40;
+		$order  = isset( $_POST['order'] ) && 'random' === $_POST['order'] ? 'random' : 'views';
 		$result = null;
 
 		if ( isset( $_POST['mfy_run'] ) && check_admin_referer( self::ACTION ) ) {
-			$result = self::run( in_array( $lang, $langs, true ) ? $lang : 'fr', $sample );
+			$result = self::run( in_array( $lang, $langs, true ) ? $lang : 'fr', $sample, 45, $order );
 		}
 		?>
 		<div class="wrap">
@@ -392,6 +456,18 @@ class MFY_Tuner {
 									<option value="<?php echo esc_attr( $l ); ?>" <?php selected( $l, $lang ); ?>><?php echo esc_html( strtoupper( $l ) ); ?></option>
 								<?php endforeach; ?>
 							</select>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="mfy-order"><?php esc_html_e( 'Which posts', 'mavo-for-you' ); ?></label></th>
+						<td>
+							<select name="order" id="mfy-order">
+								<option value="views" <?php selected( 'views', $order ); ?>><?php esc_html_e( 'Most viewed — where readers actually land', 'mavo-for-you' ); ?></option>
+								<option value="random" <?php selected( 'random', $order ); ?>><?php esc_html_e( 'Random — the catalogue as a whole', 'mavo-for-you' ); ?></option>
+							</select>
+							<p class="description">
+								<?php esc_html_e( 'These answer different questions. Most viewed measures the block where it is actually seen, and those posts are the ones most likely to be scored, tagged and hubbed. Random measures the catalogue, tail included. Run both: the gap between them is the finding.', 'mavo-for-you' ); ?>
+							</p>
 						</td>
 					</tr>
 					<tr>
@@ -424,6 +500,16 @@ class MFY_Tuner {
 		<table class="widefat striped" style="max-width:52em">
 			<tbody>
 				<tr>
+					<td><?php esc_html_e( 'Population measured', 'mavo-for-you' ); ?></td>
+					<td colspan="2">
+						<?php
+						echo esc_html( 'views' === ( $h['order'] ?? 'views' )
+							? sprintf( __( 'The %d most viewed posts (median %s views)', 'mavo-for-you' ), $h['posts'], (string) $h['views_median'] )
+							: sprintf( __( '%d posts at random (median %s views)', 'mavo-for-you' ), $h['posts'], (string) $h['views_median'] ) );
+						?>
+					</td>
+				</tr>
+				<tr>
 					<td><?php esc_html_e( 'Posts with at least one filter scored 2', 'mavo-for-you' ); ?></td>
 					<td><strong><?php echo esc_html( sprintf( '%d / %d (%d%%)', $h['strong_filters'], $h['posts'], round( 100 * $h['strong_filters'] / $n ) ) ); ?></strong></td>
 					<td class="description"><?php esc_html_e( 'Eligibility for the filter pool, and the only thing §10 accepts.', 'mavo-for-you' ); ?></td>
@@ -442,6 +528,62 @@ class MFY_Tuner {
 					<td><?php esc_html_e( 'Posts inside a hub', 'mavo-for-you' ); ?></td>
 					<td><?php echo esc_html( sprintf( '%d / %d (%d%%)', $h['hub'], $h['posts'], round( 100 * $h['hub'] / $n ) ) ); ?></td>
 					<td class="description"><?php esc_html_e( 'Reachable by the strongest signal there is.', 'mavo-for-you' ); ?></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<?php
+		$site_pct = $h['site_published'] ? round( 100 * (int) $h['site_weighted'] / $h['site_published'] ) : null;
+		$sample_pct = round( 100 * $h['strong_filters'] / $n );
+		?>
+		<h3><?php esc_html_e( 'Cross-check — is the sample telling the truth?', 'mavo-for-you' ); ?></h3>
+		<table class="widefat striped" style="max-width:52em">
+			<tbody>
+				<tr>
+					<td><?php esc_html_e( 'Travel Finder rows, site-wide, this language', 'mavo-for-you' ); ?></td>
+					<td>
+						<?php
+						echo null === $h['site_weighted']
+							? esc_html__( 'Travel Finder not active', 'mavo-for-you' )
+							: esc_html( sprintf( '%d posts carry filter rows, of %d published (%s%%)',
+								(int) $h['site_weighted'], (int) $h['site_published'],
+								null === $site_pct ? '?' : $site_pct ) );
+						?>
+					</td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Languages the sample drew from', 'mavo-for-you' ); ?></td>
+					<td>
+						<?php
+						$parts = [];
+						foreach ( $h['sample_langs'] as $l => $count ) { $parts[] = "$l: $count"; }
+						echo esc_html( implode( ', ', $parts ) );
+						?>
+					</td>
+				</tr>
+				<tr>
+					<td><?php esc_html_e( 'Verdict', 'mavo-for-you' ); ?></td>
+					<td>
+						<?php
+						if ( count( $h['sample_langs'] ) > 1 ) {
+							echo '<strong>' . esc_html__( 'The sample crossed languages — filter scores were looked up against the wrong one. Ignore the figures above.', 'mavo-for-you' ) . '</strong>';
+						} elseif ( 'views' === ( $h['order'] ?? 'views' ) ) {
+							/* A most-viewed sample is *meant* to beat the site-wide
+							   figure; the gap is the finding, not a fault. */
+							echo esc_html( sprintf(
+								/* translators: 1: sample %, 2: site-wide % */
+								__( 'Most-viewed sample: %1$d%% scored, against %2$s%% site-wide. A gap here means the tail is unscored while the pages readers reach are fine; no gap means the shortage is everywhere.', 'mavo-for-you' ),
+								$sample_pct, null === $site_pct ? '?' : (string) $site_pct ) );
+						} elseif ( null !== $site_pct && abs( $site_pct - $sample_pct ) > 25 ) {
+							echo '<strong>' . esc_html( sprintf(
+								/* translators: 1: site %, 2: sample % */
+								__( 'Random sample (%2$d%%) and site-wide (%1$d%%) disagree sharply — treat the sample as unrepresentative.', 'mavo-for-you' ),
+								$site_pct, $sample_pct ) ) . '</strong>';
+						} else {
+							esc_html_e( 'Random sample and site-wide figures agree; the coverage reading is real.', 'mavo-for-you' );
+						}
+						?>
+					</td>
 				</tr>
 			</tbody>
 		</table>
