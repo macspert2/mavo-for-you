@@ -1,0 +1,9 @@
+# macOS writes these into every directory it has ever displayed. They are not
+# part of the plugin and were briefly committed by a `git add -A`.
+.DS_Store
+**/.DS_Store
+
+# Editor and OS noise
+Thumbs.db
+*.swp
+*~
