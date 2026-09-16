@@ -336,19 +336,15 @@
  * space would rewrap the text around it. Prose links therefore only change
  * colour — no glyph, no padding, no pseudo-element with content.
  *
- * To soften: raise the two opacity values. To switch off: the
- * `mavo_for_you_mark_read` filter, or override these rules in the theme.
+ * The badge is the whole of the tile treatment, deliberately. It used to come
+ * with a dimmed, desaturated thumbnail and a grey title, and three signals for
+ * one fact was two too many: an article you have read is not a worse article,
+ * and greying it out said it was. The badge states the fact once and leaves
+ * the tile looking like every other tile, which is what it is.
+ *
+ * To switch off entirely: the `mavo_for_you_mark_read` filter, or override
+ * this rule in the theme.
  */
-
-.mv-tile.mfy-read .mv-tile__img {
-	opacity: 0.5;
-	filter: saturate(0.55);
-}
-
-.mv-tile.mfy-read .mv-tile__title a,
-.mv-tile.mfy-read .mv-tile__link {
-	color: #BBBBBB;
-}
 
 /* Over the image only: on a tile with no media the corner belongs to the text. */
 .mv-tile.mfy-read:not(.mv-tile--no-media)::after {

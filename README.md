@@ -502,9 +502,19 @@ cannot serve both contexts:
 
 | Context | Treatment | Layout cost |
 |---|---|---|
-| Tiles (`.mv-tile`) | image dimmed, title muted, a check in the corner | none — the tile is positioned, the check is absolute |
+| Tiles (`.mv-tile`) | a check in the corner of the image | none — the tile is positioned, the check is absolute |
 | Prose (`.entry-content`) | colour change only | none |
 | Nav, footer, "Consultés récemment" | nothing | — |
+
+The tile badge is the whole of the tile treatment. It used to arrive with a dimmed,
+desaturated thumbnail and a greyed title, and three signals for one fact was two too
+many: an article you have read is not a worse article, and greying it out said it was.
+The badge states the fact once and leaves the tile looking like every other tile.
+
+One consequence to know about: the badge sits over the image
+(`:not(.mv-tile--no-media)`), because on a text-only tile the corner belongs to the
+text. A media-less tile therefore now carries **no read mark at all**, where the muted
+title used to be its only one.
 
 Prose links get **no glyph and no pseudo-element with content**, deliberately. The marks
 are applied after load, because that is when localStorage can first be read, so anything
@@ -529,8 +539,8 @@ Marks reflect **this visit only** — 20 views, 24 hours. A reader returning nex
 nothing marked, unlike the browser's own visited-link colour, which the theme does not
 style at all. That is the privacy choice, not an oversight.
 
-Switch off with `mavo_for_you_mark_read`; soften by overriding the two opacity values in
-`assets/css/mavo-for-you.css`; change where marks may go with
+Switch off with `mavo_for_you_mark_read`; restyle by overriding
+`.mv-tile.mfy-read::after` in the theme; change where marks may go with
 `mavo_for_you_mark_read_selectors`.
 
 The script therefore loads on ordinary pages too (archives, the homepage), where it does
