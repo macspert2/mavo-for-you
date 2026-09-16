@@ -1,0 +1,261 @@
+/**
+ * Tiles that behave like buttons — the stamp treatment across the real tile
+ * variants of mamanvoyage.com.
+ *
+ * The geometry here mirrors mv-tiles.css rather than approximating it: same
+ * radius, same shadows, same padding, same 16/10 media ratio, same title
+ * colour. Only the interaction differs, which is the thing under test.
+ *
+ * Three things govern the choices:
+ *
+ * 1. Rotation scales with width. A tile's corner travels (width / 2) × sin(angle).
+ *    At 1.2° that is ~3px on a 300px card and ~8px on a full-width result row.
+ *    The angle has to come down as the tile gets wider, or it reads as a
+ *    rendering fault.
+ *
+ * 2. A tile is mostly text. A button carries two words; a card carries a title
+ *    and an excerpt, and rotated text is re-rasterised off the pixel grid.
+ *    Whether that is acceptable is a judgement to make by looking, which is
+ *    what this page is for.
+ *
+ * 3. Not every tile is a button. The utility/TOC tile is a container, not an
+ *    affordance — giving it hover motion promises a click that does not exist.
+ */
+
+:root {
+	--mv-color-primary:   #4e74a5;
+	--mv-color-warm:      #886353;
+	--mv-color-warm-dark: #5c3d2e;
+	--mv-color-highlight: #a92d87;
+	--mv-color-text:      #3a3a3a;
+	--mv-color-subtle:    #757575;
+	--mv-color-surface:   #fff;
+	--mv-color-bg-soft:   #f0eee9;
+	--mv-color-bg-cream:  #f7f4ef;
+	--mv-color-border:    #e6e6e6;
+
+	/* Driven by the radius control; 14/10 is what the theme ships today. */
+	--mv-tile-radius:         14px;
+	--mv-tile-radius-sm:      10px;
+	--mv-tile-pad:            clamp(1rem, 2vw, 1.25rem);
+	--mv-tile-gap:            clamp(1rem, 2.2vw, 1.5rem);
+	--mv-tile-shadow:         0 8px 22px rgba(58, 58, 58, .08);
+	--mv-tile-shadow-hover:   0 12px 30px rgba(58, 58, 58, .12);
+	--mv-tile-shadow-pressed: 0 5px 16px rgba(58, 58, 58, .09);
+}
+
+/*
+ * The buttons settled on a 4px ticket corner. A tile is twenty times wider, and
+ * the same radius reads differently at that size: what looks softly rounded on
+ * a 120px button looks nearly square on a 320px card. These are the options
+ * worth comparing — 4px is literal consistency, 6–8px is optical consistency.
+ *
+ * The compact variant keeps a slightly tighter corner throughout, as it does
+ * in the theme.
+ */
+body:has(#r-4:checked)  { --mv-tile-radius: 4px;  --mv-tile-radius-sm: 3px; }
+body:has(#r-6:checked)  { --mv-tile-radius: 6px;  --mv-tile-radius-sm: 4px; }
+body:has(#r-8:checked)  { --mv-tile-radius: 8px;  --mv-tile-radius-sm: 6px; }
+body:has(#r-14:checked) { --mv-tile-radius: 14px; --mv-tile-radius-sm: 10px; }
+
+/* The buttons on this page follow the site: always 4px, never the tile radius,
+   so the comparison is honest. */
+.demo-button {
+	display: inline-block;
+	padding: 10px 24px;
+	border: 2px solid transparent;
+	border-radius: 4px;
+	background-color: var(--mv-color-primary);
+	color: #fff;
+	font: inherit;
+	font-weight: 600;
+	text-decoration: none;
+	cursor: pointer;
+	transition: transform .2s cubic-bezier(.34,1.6,.64,1), filter .2s;
+}
+.demo-button:hover, body:has(#s-hover:checked) .demo-button { transform: rotate(-1.2deg); filter: brightness(.96); }
+.demo-button:active, body:has(#s-active:checked) .demo-button {
+	transform: rotate(.4deg) scale(.98); filter: brightness(.92);
+	outline: 5px dashed color-mix(in srgb, currentColor 60%, transparent); outline-offset: -5px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	padding: 0 1.25rem 5rem;
+	background: #fff;
+	color: var(--mv-color-text);
+	font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 68rem; margin: 0 auto; }
+header.page { padding: 3.5rem 0 2rem; border-bottom: 1px solid var(--mv-color-border); margin-bottom: 2rem; }
+h1 { margin: 0 0 .4rem; font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.15; letter-spacing: -.015em; }
+h1 em { font-style: normal; color: var(--mv-color-primary); }
+.lede { margin: 0; max-width: 48rem; font-size: 1.05rem; color: var(--mv-color-subtle); }
+h2 { margin: 3rem 0 .3rem; font-size: 1.4rem; letter-spacing: -.01em; }
+h2::after { content: ""; display: block; width: 2.2em; height: 3px; margin-top: .45rem; border-radius: 2px; background: var(--mv-color-primary); }
+h3 { margin: 0 0 .6rem; font-size: .95rem; color: var(--mv-color-subtle); font-weight: 600; }
+.note { margin: .8rem 0 1.6rem; max-width: 48rem; color: var(--mv-color-subtle); font-size: .93rem; }
+
+/* ── The state simulator ──────────────────────────────────────────────────── */
+
+/*
+ * :hover and :active cannot be faked, and a grid of tiles is exactly where you
+ * want to see every one in the same state at once. These radios mirror each
+ * treatment's declarations onto every tile through :has(). No script.
+ */
+.statebar {
+	position: sticky; top: 0; z-index: 10;
+	display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem;
+	margin: 0 -1.25rem 2rem; padding: .8rem 1.25rem;
+	background: rgba(255, 255, 255, .93);
+	backdrop-filter: blur(8px);
+	border-bottom: 1px solid var(--mv-color-border);
+	font-size: .88rem;
+}
+.statebar label { cursor: pointer; user-select: none; }
+.statebar .sep { width: 1px; height: 1.4em; background: var(--mv-color-border); }
+.statebar .hint { color: var(--mv-color-subtle); font-size: .82rem; }
+
+/* ── Layout for the comparisons ───────────────────────────────────────────── */
+
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 21rem), 1fr)); gap: 1.4rem; margin-bottom: 2.4rem; }
+.pair > div { min-width: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--mv-tile-gap); }
+.stack { display: grid; gap: var(--mv-tile-gap); }
+
+.flags { display: flex; flex-wrap: wrap; gap: .3rem; margin: .7rem 0 0; padding: 0; list-style: none; }
+.flags li { padding: .15rem .5rem; border-radius: 999px; font-size: .68rem; background: var(--mv-color-bg-cream); color: var(--mv-color-warm-dark); }
+.flags li.ok { background: #eef3f8; color: #3c5c84; }
+.flags li.warn { background: #fdf0f7; color: var(--mv-color-highlight); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE TILES — geometry mirrored from mv-tiles.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mv-tile {
+	display: block;
+	position: relative;
+	min-width: 0;
+	background: var(--mv-color-surface);
+	border: 0;
+	border-radius: var(--mv-tile-radius);
+	box-shadow: var(--mv-tile-shadow);
+	color: var(--mv-color-text);
+	text-decoration: none;
+	overflow-wrap: break-word;
+}
+
+.mv-tile__media { display: block; position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--mv-color-bg-soft); }
+.mv-tile__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.mv-tile__body { display: block; padding: var(--mv-tile-pad); }
+.mv-tile__eyebrow { display: inline-block; margin: 0 0 .45rem; color: var(--mv-color-warm); font-size: .82rem; font-weight: 700; }
+.mv-tile__title { display: block; margin: 0 0 .35rem; font-size: 1.08rem; font-weight: 600; line-height: 1.25; }
+.mv-tile__title a, .mv-tile__link { color: var(--mv-color-primary); text-decoration: none; }
+.mv-tile__link::after { content: ""; position: absolute; inset: 0; }
+.mv-tile__description { display: block; color: var(--mv-color-text); font-size: .92rem; line-height: 1.5; }
+
+.mv-tile__badges { display: flex; flex-wrap: wrap; gap: .3rem; margin: 0 0 .5rem; }
+.mv-badge { padding: .12rem .5rem; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+.mv-badge--primary { background: #eef3f8; color: #3c5c84; }
+.mv-badge--warm { background: var(--mv-color-bg-cream); color: var(--mv-color-warm-dark); }
+
+.mv-tile--media { padding: 0; overflow: hidden; }
+.mv-tile--compact { border-radius: var(--mv-tile-radius-sm); }
+.mv-tile--compact .mv-tile__body { padding: .8rem .9rem; }
+.mv-tile--text { padding: var(--mv-tile-pad); }
+.mv-tile--no-media .mv-tile__media { display: none; }   /* as in the theme */
+.mv-tile--text .mv-tile__body { padding: 0; }
+
+.mv-tile--overlay { min-height: 180px; padding: 0; overflow: hidden; color: #fff; isolation: isolate; display: flex; flex-direction: column; justify-content: flex-end; }
+.mv-tile--overlay .mv-tile__media { position: absolute; inset: 0; aspect-ratio: auto; z-index: -1; }
+.mv-tile--overlay .mv-tile__media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 30%, rgba(0,0,0,.62)); }
+.mv-tile--overlay .mv-tile__title a, .mv-tile--overlay .mv-tile__link { color: #fff; }
+.mv-tile--overlay .mv-tile__description { color: rgba(255,255,255,.88); }
+
+.mv-tile--result { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 1rem; padding: .85rem; align-items: center; }
+.mv-tile--result .mv-tile__media { border-radius: var(--mv-tile-radius-sm); aspect-ratio: 4 / 3; }
+.mv-tile--result .mv-tile__body { padding: 0; }
+
+.mv-tile--utility { padding: var(--mv-tile-pad) 1.15rem; }
+.mv-tile--utility h4 { margin: 0 0 .4rem; font-size: .92rem; }
+.mv-tile--utility p { margin: 0; font-size: .92rem; color: var(--mv-color-subtle); }
+
+/*
+ * Real thumbnails from the site, saved locally so the page still needs nothing
+ * from the network. A photograph matters here: gradients hide what rotation
+ * does to a detailed image and to text sitting on top of one.
+ */
+.img-a { background-image: url("img/photo-1.jpg"); }
+.img-b { background-image: url("img/photo-2.jpg"); }
+.img-c { background-image: url("img/photo-3.jpg"); }
+.img-d { background-image: url("img/photo-4.jpg"); }
+.img-a, .img-b, .img-c, .img-d { background-size: cover; background-position: center; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TREATMENTS
+   Each is written against the real pseudo-class and its simulated twin.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mv-tile { transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s ease, filter .2s ease; }
+
+/* ── Current: the lift ─────────────────────────────────────────────────────── */
+.t-lift:hover,  body:has(#s-hover:checked)  .t-lift  { transform: translateY(-2px); box-shadow: var(--mv-tile-shadow-hover); }
+.t-lift:active, body:has(#s-active:checked) .t-lift  { transform: translateY(-1px); box-shadow: var(--mv-tile-shadow-pressed); }
+
+/* ── Stamp, full strength — the button's 1.2° ─────────────────────────────── */
+.t-stamp:hover,  body:has(#s-hover:checked)  .t-stamp {
+	transform: rotate(-1.2deg);
+	box-shadow: var(--mv-tile-shadow-hover);
+	filter: brightness(.97);
+}
+.t-stamp:active, body:has(#s-active:checked) .t-stamp {
+	transform: rotate(.4deg) scale(.985);
+	box-shadow: var(--mv-tile-shadow-pressed);
+	filter: brightness(.94);
+	outline: 5px dashed color-mix(in srgb, currentColor 45%, transparent);
+	outline-offset: -5px;
+}
+
+/* ── Stamp, soft — half the angle, for anything wider than a card ─────────── */
+.t-soft:hover,  body:has(#s-hover:checked)  .t-soft {
+	transform: rotate(-.6deg) translateY(-2px);
+	box-shadow: var(--mv-tile-shadow-hover);
+	filter: brightness(.97);
+}
+.t-soft:active, body:has(#s-active:checked) .t-soft {
+	transform: rotate(.2deg) scale(.99);
+	box-shadow: var(--mv-tile-shadow-pressed);
+	outline: 4px dashed color-mix(in srgb, currentColor 40%, transparent);
+	outline-offset: -4px;
+}
+
+/* ── Press only — no rotation, for full-width rows ────────────────────────── */
+.t-press:hover,  body:has(#s-hover:checked)  .t-press { transform: translateY(-2px); box-shadow: var(--mv-tile-shadow-hover); filter: brightness(.97); }
+.t-press:active, body:has(#s-active:checked) .t-press {
+	transform: translateY(0) scale(.995);
+	box-shadow: var(--mv-tile-shadow-pressed);
+	outline: 4px dashed color-mix(in srgb, currentColor 40%, transparent);
+	outline-offset: -4px;
+}
+
+/* ── Inert — for tiles that are containers, not affordances ───────────────── */
+.t-none { cursor: default; }
+.t-none:hover, .t-none:active,
+body:has(#s-hover:checked) .t-none, body:has(#s-active:checked) .t-none { transform: none; box-shadow: var(--mv-tile-shadow); filter: none; }
+
+/* Focus is not optional, whichever treatment wins. */
+.mv-tile:focus-within { box-shadow: var(--mv-tile-shadow-hover); }
+.mv-tile__link:focus-visible { outline: 3px solid var(--mv-color-primary); outline-offset: 3px; border-radius: 2px; }
+
+/* ── The overlap test ─────────────────────────────────────────────────────── */
+.tight { gap: .35rem; }
+.tight .mv-tile { outline: 1px dashed rgba(169, 45, 135, .35); outline-offset: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+	.mv-tile { transition: box-shadow .2s ease; }
+	.mv-tile:hover, .mv-tile:active { transform: none; }
+}

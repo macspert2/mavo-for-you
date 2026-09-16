@@ -371,6 +371,215 @@ body:has(#sim:checked) .s-liftoff a { color: var(--mv-warm-deep); }
 .s-liftoff a:hover { transform: translateY(-0.18em) rotate(-1.5deg); color: var(--mv-highlight); }
 .s-liftoff a:active { transform: translateY(0.05em) rotate(0.5deg); }
 
+/* =========================================================================
+   THE SEAL, APPLIED TO TEXT
+   =========================================================================
+
+   The buttons and tiles now wear « sceau frappé »: a tilt on hover, and on
+   press a recoil plus relief — the face sinks, as a die would sink it. The
+   question this section answers is whether a link can go the same way.
+
+   The answer is half yes, and the half matters.
+
+   WHAT CANNOT COME ALONG: THE MOTION
+
+   `transform` does not apply to a non-replaced inline box at all. The fix is
+   display: inline-block, and the fix is worse than the problem — an
+   inline-block link is one unbreakable box, so a two-word link near the end of
+   a line jumps whole to the next line and the paragraph reflows. In prose that
+   is fatal; this site's articles carry a link every few lines.
+
+   And it would be wrong even if it worked. The seal's recoil says "you pressed
+   this". A paragraph where words tilt as the pointer crosses them says it
+   about text that was never pressed.
+
+   WHAT DOES COME ALONG: THE RELIEF
+
+   text-shadow applies to inline text, never affects layout, and wraps for
+   free. It is also the half of the seal that readers actually register — the
+   highlight moving from below the glyphs to above them. That flip IS the
+   deboss, optically. (There is no `text-shadow: inset`; only box-shadow has
+   that keyword, which is why it has to be faked by moving the light.)
+
+   So: the seal's MOTION belongs to things you press, and the seal's RELIEF
+   belongs to things you mark. Links get the relief.
+
+   THE CONSTRAINT NOBODY EXPECTS: WHITE PAPER CANNOT BE RAISED
+
+   Relief is a lie told with light. A raised letter needs a highlight lighter
+   than the surface under it — and on #fff there is nothing lighter than the
+   paper. On white, the resting "proud" state is not subtle, it is *absent*:
+   text-shadow: 0 1px 0 white paints white on white.
+
+   Which leaves exactly one direction available in article prose:
+
+       on cream    the word can stand proud AND sink        (both states read)
+       on white    the word can only sink                   (dark glint above)
+
+   That is not the compromise it sounds like. Sinking is what a press does, so
+   the one state white paper can express is the only one a link needs: at rest
+   it lies flat, and on :active it is struck.
+   ========================================================================= */
+
+/* 13 ── Empreinte: what is live today, plus the strike.
+        Ligne d'horizon unchanged — blue, hairline rule, warm wipe on hover —
+        with one declaration added to :active. On white that is the whole
+        available vocabulary, and it costs nothing: no layout, no reflow, no
+        new element, and it wraps because the underline already had to. */
+.s-empreinte a {
+	text-decoration: none;
+	background-image:
+		linear-gradient(var(--mv-warm), var(--mv-warm)),
+		linear-gradient(color-mix(in srgb, var(--mv-blue) 35%, transparent), color-mix(in srgb, var(--mv-blue) 35%, transparent));
+	background-size: 0% 2px, 100% 1px;
+	background-position: 0 100%, 0 100%;
+	background-repeat: no-repeat;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+	transition: background-size .35s cubic-bezier(.22, 1, .36, 1), color .2s, text-shadow .15s;
+}
+.s-empreinte a:visited,
+body:has(#sim:checked) .s-empreinte a { color: var(--mv-warm-deep); }
+.s-empreinte a:hover { color: var(--mv-warm-deep); background-size: 100% 2px, 100% 1px; }
+/* The strike. Nothing at rest — on white there is nothing to raise it above. */
+.s-empreinte a:active {
+	color: var(--mv-highlight);
+	text-shadow: 0 -1px 0 rgba(255, 255, 255, .9), 0 1px 1px rgba(0, 0, 0, .3);
+}
+
+/* 14 ── Poinçon: relief carrying all of it, with no underline at all.
+        Only possible on cream, which is exactly where it belongs — captions,
+        sidebars, the orientation box. The word stands proud at rest and is
+        struck on press, and the rule that would normally mark it as a link is
+        replaced by the fact that it is raised, which no other text on the page
+        is. */
+.s-poincon { background: var(--mv-cream); }
+.s-poincon a {
+	color: var(--mv-warm-deep);
+	text-decoration: none;
+	text-shadow: 0 1px 0 rgba(255, 255, 255, .95);
+	transition: color .2s, text-shadow .15s;
+}
+.s-poincon a:visited,
+body:has(#sim:checked) .s-poincon a { color: var(--mv-muted); }
+.s-poincon a:hover { color: var(--mv-ink); text-shadow: 0 1px 0 rgba(255, 255, 255, .95), 0 2px 2px rgba(92, 61, 46, .2); }
+.s-poincon a:active { color: var(--mv-warm-deep); text-shadow: 0 -1px 0 rgba(255, 255, 255, .95), 0 1px 1px rgba(92, 61, 46, .32); }
+
+/* 15 ── Cachet: the link that is already a button, so it takes the whole seal.
+        display: inline-block is acceptable here and nowhere else — these are
+        CTAs and "lire la suite" links that sit alone on their own line, so the
+        unbreakable box costs nothing. This is the only place rotation is
+        allowed, and the recoil is the buttons' own keyframe. */
+@keyframes mv-sceau-lien {
+	0%   { transform: rotate(-1deg)    scale(1);     }
+	45%  { transform: rotate(0.35deg)  scale(0.965); }
+	70%  { transform: rotate(0.2deg)   scale(1.005); }
+	100% { transform: rotate(0.3deg)   scale(0.99);  }
+}
+.s-cachet { background: var(--mv-blue-tint); }
+.s-cachet a {
+	display: inline-block;
+	padding: .22em .7em;
+	border-radius: 4px;
+	background-color: #fff;
+	color: var(--mv-warm-deep);
+	text-decoration: none;
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 20%, transparent);
+	text-shadow: 0 1px 0 rgba(255, 255, 255, .95);
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s,
+	            text-shadow .15s, background-color .2s, color .2s;
+}
+.s-cachet a:visited,
+body:has(#sim:checked) .s-cachet a { color: var(--mv-muted); background-color: #fbfbfa; }
+.s-cachet a:hover {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+	            0 6px 16px rgba(58, 58, 58, .13);
+}
+.s-cachet a:active {
+	animation: mv-sceau-lien .28s cubic-bezier(.25, .7, .3, 1) both;
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+	            inset 0 3px 5px rgba(0, 0, 0, .3),
+	            inset 0 -2px 0 rgba(255, 255, 255, .35);
+	text-shadow: 0 -1px 0 rgba(255, 255, 255, .95);
+}
+
+/* 16 ── Filigrane: the deboss as a background layer rather than a shadow.
+        The same trick the notched buttons use, shrunk to a word: a shading
+        gradient grows down from the top of the line box, so the word sits in a
+        shallow depression. Works on white, because a depression is a
+        DARKENING, and darkening is always available — it is only the highlight
+        that white paper cannot supply.
+
+        box-decoration-break: clone is load-bearing, as it is for every
+        background-drawn link treatment: without it a link wrapping onto a
+        second line is painted as one sliced box. */
+.s-filigrane a {
+	text-decoration: none;
+	padding: 0 .18em;
+	background-image: linear-gradient(rgba(58, 58, 58, .13), rgba(58, 58, 58, .03) 60%, transparent 85%);
+	background-repeat: no-repeat;
+	background-position: 0 0;
+	background-size: 100% 0%;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+	transition: background-size .22s ease, color .2s, text-shadow .15s;
+}
+.s-filigrane a:visited,
+body:has(#sim:checked) .s-filigrane a { color: var(--mv-warm-deep); }
+.s-filigrane a:hover { color: var(--mv-warm-deep); background-size: 100% 45%; }
+.s-filigrane a:active { background-size: 100% 100%; text-shadow: 0 -1px 0 rgba(255,255,255,.9); }
+
+/* 17 ── Sillon: the rule itself becomes an incised groove.
+        Two stacked hairlines — dark above, light below — read as a line cut
+        into the paper rather than drawn on it, which is what an underline in a
+        struck document is. On press the two swap and the groove becomes a
+        ridge.
+
+        Cream again, and for the same reason as Poinçon: the lower hairline has
+        to be lighter than the paper, and on white it cannot be. */
+.s-sillon { background: var(--mv-cream); }
+.s-sillon a {
+	color: var(--mv-blue-deep);
+	text-decoration: none;
+	background-image:
+		linear-gradient(color-mix(in srgb, var(--mv-warm-deep) 45%, transparent), color-mix(in srgb, var(--mv-warm-deep) 45%, transparent)),
+		linear-gradient(rgba(255,255,255,.95), rgba(255,255,255,.95));
+	background-size: 100% 1px, 100% 1px;
+	background-position: 0 100%, 0 calc(100% + 1px);
+	background-repeat: no-repeat;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+	transition: background-position .2s, color .2s;
+}
+.s-sillon a:visited,
+body:has(#sim:checked) .s-sillon a { color: var(--mv-muted); }
+.s-sillon a:hover { color: var(--mv-warm-deep); }
+/* Groove becomes ridge: the light line moves above the dark one. */
+.s-sillon a:active { background-position: 0 calc(100% - 1px), 0 100%; }
+
+/* 18 ── Lu: the read-marked link, which is where the metaphor closes.
+        A page that has been read is a page that has already been stamped —
+        which is the same idea the whole personalization layer runs on. So a
+        link mavo-for-you has marked carries a permanent, faint strike: sunken
+        at rest, not just when pressed.
+
+        This one is a CLASS, not :visited, and that is the point. :visited
+        accepts colour-family properties only and ignores the alpha channel, so
+        it could never express relief at any strength. .mfy-read-link is
+        applied by script from the local history, so it is under no such
+        restriction — and it means something different anyway: ":visited" is
+        "this browser has been here", "read" is "you read it, this visit". */
+.s-lu a { color: var(--mv-blue); text-decoration: none;
+	background: linear-gradient(color-mix(in srgb, var(--mv-blue) 32%, transparent), color-mix(in srgb, var(--mv-blue) 32%, transparent)) 0 100% / 100% 1px no-repeat;
+	-webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.s-lu a.mfy-read-link {
+	color: var(--mv-muted);
+	text-shadow: 0 -1px 0 rgba(255, 255, 255, .9), 0 1px 1px rgba(0, 0, 0, .22);
+	background-image: linear-gradient(color-mix(in srgb, var(--mv-muted) 40%, transparent), color-mix(in srgb, var(--mv-muted) 40%, transparent));
+}
+.s-lu a:hover { color: var(--mv-warm-deep); }
+
 /* ── Focus, for every gallery card ────────────────────────────────────────── */
 
 /*
@@ -457,32 +666,79 @@ body:has(#sim:checked) .p-carnet .demo a { color: var(--mv-muted); text-decorati
 .p-carnet .demo a:hover { color: var(--mv-warm-deep); text-decoration-style: solid; text-decoration-color: var(--mv-warm); }
 .p-carnet .demo a:active { color: var(--mv-highlight); text-decoration-color: var(--mv-highlight); }
 
-/* ── Proposal C — « Tampon » (hub links, CTAs, "lire la suite") ───────────── */
+/* ── Proposal C — « Cachet » (hub links, CTAs, "lire la suite") ───────────── */
 
-.p-tampon .demo { background: var(--mv-blue-tint); }
-.p-tampon .demo a {
+/*
+ * Updated to « sceau frappé », because these links ARE buttons and the site's
+ * buttons now wear it. Same palette as before; what changed is that the press
+ * is relief instead of a colour swap, and the tilt is 1 degree instead of 1.2
+ * — the rim makes it easier to read, so it needs less of it.
+ *
+ * display: inline-block is acceptable here and nowhere else on this page.
+ * These sit alone on their own line, so an unbreakable box costs nothing. In a
+ * paragraph it would reflow the text every time a link neared a line end.
+ */
+.p-cachet .demo { background: var(--mv-blue-tint); }
+.p-cachet .demo a {
 	display: inline-block;
-	padding: 0.22em 0.7em;
-	border: 1.5px solid color-mix(in srgb, var(--mv-warm) 55%, transparent);
+	padding: .28em .8em;
 	border-radius: 4px;
 	background-color: #fff;
 	color: var(--mv-warm-deep);
 	text-decoration: none;
-	transition: transform 0.2s cubic-bezier(0.34, 1.6, 0.64, 1), background-color 0.2s, border-color 0.2s, color 0.2s;
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 20%, transparent);
+	text-shadow: 0 1px 0 rgba(255, 255, 255, .95);
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s,
+	            text-shadow .15s, background-color .2s, color .2s;
 }
-.p-tampon .demo a:visited,
-body:has(#sim:checked) .p-tampon .demo a {
-	color: var(--mv-muted);
-	border-color: var(--mv-border);
-	background-color: #fbfbfa;
+.p-cachet .demo a:visited,
+body:has(#sim:checked) .p-cachet .demo a { color: var(--mv-muted); background-color: #fbfbfa; }
+.p-cachet .demo a:hover {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+	            0 6px 16px rgba(58, 58, 58, .13);
 }
-.p-tampon .demo a:hover {
-	color: #fff;
-	background-color: var(--mv-warm);
-	border-color: var(--mv-warm);
-	transform: rotate(-1.2deg);
+.p-cachet .demo a:active {
+	animation: mv-sceau-lien .28s cubic-bezier(.25, .7, .3, 1) both;
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+	            inset 0 3px 5px rgba(0, 0, 0, .3),
+	            inset 0 -2px 0 rgba(255, 255, 255, .35);
+	text-shadow: 0 -1px 0 rgba(255, 255, 255, .95);
 }
-.p-tampon .demo a:active { background-color: var(--mv-highlight); border-color: var(--mv-highlight); transform: rotate(0.4deg) scale(0.98); }
+
+/* ── Proposal D — « Empreinte » (article prose, the change worth shipping) ── */
+
+/*
+ * Ligne d'horizon — what is live today — with one declaration added to
+ * :active. Nothing else moves: same colours, same hairline, same wipe, same
+ * box-decoration-break.
+ *
+ * It is the whole of the seal that white paper can express, and the only part
+ * of it a prose link should want. At rest the word lies flat, because on #fff
+ * a highlight cannot raise it and pretending otherwise just paints white on
+ * white. On :active it is struck.
+ */
+.p-empreinte .demo { background: #fff; }
+.p-empreinte .demo a {
+	color: var(--mv-blue);
+	text-decoration: none;
+	background-image:
+		linear-gradient(var(--mv-warm), var(--mv-warm)),
+		linear-gradient(color-mix(in srgb, var(--mv-blue) 32%, transparent), color-mix(in srgb, var(--mv-blue) 32%, transparent));
+	background-size: 0% 2px, 100% 1px;
+	background-position: 0 100%, 0 100%;
+	background-repeat: no-repeat;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+	transition: background-size .35s cubic-bezier(.22, 1, .36, 1), color .2s ease, text-shadow .15s;
+}
+.p-empreinte .demo a:visited,
+body:has(#sim:checked) .p-empreinte .demo a { color: var(--mv-warm-deep); }
+.p-empreinte .demo a:hover { color: var(--mv-warm-deep); background-size: 100% 2px, 100% 1px; }
+.p-empreinte .demo a:active {
+	color: var(--mv-highlight);
+	text-shadow: 0 -1px 0 rgba(255, 255, 255, .9), 0 1px 1px rgba(0, 0, 0, .3);
+}
 
 /* ── Footnotes ────────────────────────────────────────────────────────────── */
 

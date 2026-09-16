@@ -32,8 +32,22 @@
 	--mv-muted:     #757575;
 	--mv-border:    #e6e6e6;
 
-	--radius: 12px;
+	--radius: 12px;                 /* page furniture: cards, panels, notes */
 	--shadow: 0 8px 22px rgba(58, 58, 58, 0.08);
+
+	/*
+	 * Every button on this page, in one place.
+	 *
+	 * The gallery used to run on 999px pills, which flattered some of these
+	 * styles and quietly misrepresented all of them: the site settled on a 4px
+	 * ticket corner months ago, so a pill here was comparing options against a
+	 * shape none of them would ever be shipped in. A stamp on a pill also reads
+	 * as a badge; a stamp on a near-square reads as a stamp.
+	 *
+	 * Dentelé keeps its own 2px, because a perforated edge wants square
+	 * shoulders for the holes to sit against.
+	 */
+	--btn-radius: 4px;
 }
 
 /* ── Page furniture ───────────────────────────────────────────────────────── */
@@ -96,7 +110,7 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
 }
 .states figure { margin: 0; display: flex; flex-direction: column; align-items: center; gap: .3rem; }
 .states figcaption { font-size: .62rem; letter-spacing: .04em; text-transform: uppercase; color: var(--mv-muted); }
-.states .btn { padding: 5px 10px; font-size: .68rem; border-radius: 999px; }
+.states .btn { padding: 5px 10px; font-size: .68rem; border-radius: var(--btn-radius); }
 .states .b-texte.btn { padding: 5px 2px; }
 
 .flags { display: flex; flex-wrap: wrap; gap: .3rem; margin: .9rem 0 0; padding: 0; list-style: none; }
@@ -114,7 +128,7 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
 	display: inline-block;
 	padding: 10px 24px;
 	border: 2px solid transparent;
-	border-radius: 999px;
+	border-radius: var(--btn-radius);
 	background: none;
 	color: inherit;
 	font: inherit;
@@ -236,7 +250,6 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
         it only works where the page background behind it is known. */
 .b-billet {
 	position: relative;
-	border-radius: 4px;
 	background-color: var(--mv-blue-tint);
 	color: var(--mv-blue-deep);
 	border-color: var(--mv-blue);
@@ -276,7 +289,6 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
 	--billet-bg: #fff;
 	--notch: 7px;
 	padding-right: 44px;
-	border-radius: 4px;
 	border-color: transparent;
 	background-color: var(--mv-blue);
 	color: #fff;
@@ -317,7 +329,6 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
 .b-billet-calme {
 	--billet-bg: #fff;
 	--notch: 6px;
-	border-radius: 4px;
 	border-color: transparent;
 	background-color: var(--mv-cream);
 	color: var(--mv-warm-deep);
@@ -336,7 +347,7 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
 
 /* The frozen swatches are far too small for a 7px notch or a 44px arrow gap. */
 .states .b-billet-tampon,
-.states .b-billet-calme { --notch: 3px; padding-right: 10px; border-radius: 3px; }
+.states .b-billet-calme { --notch: 3px; padding-right: 10px; }
 .states .b-billet-tampon::after { display: none; }
 
 /* On a cream panel the notches have to be cream too, or they read as blobs. */
@@ -344,6 +355,598 @@ h3 { margin: 0 0 .2rem; font-size: 1.02rem; }
 .demo .b-billet-calme { --billet-bg: var(--mv-cream); }
 .demo.on-white .b-billet-tampon,
 .demo.on-white .b-billet-calme { --billet-bg: #fff; }
+
+/* =========================================================================
+   SECOND SERIES — THE ACT OF STAMPING
+   ========================================================================= 
+
+   The first gallery asked "what could a button look like". This one asks a
+   narrower question: what actually happens when a passport or a ticket gets
+   stamped, and which part of that is worth a button.
+
+   Seven things happen, and each variant below takes exactly one:
+
+     13 Frappe        the arm comes down and the stamp recoils
+     14 Onde          the impact travels outward through the paper
+     15 Oblitération  the cancellation stroke is dragged across
+     16 Encreur       the stamp is loaded with ink before it lands
+     17 Gaufrage      the dry seal, which leaves relief and no ink at all
+     18 Décalage      the double impression, out of register
+     19 Dentelé       the perforated edge of the stamp itself
+     20 Encrage       ink never lands evenly
+
+   Every one of them is input-safe. That is not a coincidence: after the first
+   gallery showed that pseudo-elements rule a style out of the comment and
+   search submits, this series was written under the constraint from the start.
+   Everything here is done with background layers, box-shadow, text-shadow,
+   transform and one keyframe animation — all of which an <input> supports.
+   ========================================================================= */
+
+/* 13 ── Frappe: the recoil.
+        The others describe the end state of a press; this one describes the
+        movement. A real stamp overshoots — it lands harder than it rests —
+        and a transition cannot express that, because a transition only
+        interpolates between two values. A keyframe can.
+
+        Caveat worth knowing: the animation runs while :active matches, so a
+        very fast click can cut it off partway. `both` holds the final frame
+        for as long as the button is held down. */
+@keyframes mv-frappe {
+	0%   { transform: rotate(-1.2deg) scale(1);     }
+	30%  { transform: rotate(0.7deg)  scale(0.945); }  /* the blow lands */
+	55%  { transform: rotate(0.15deg) scale(1.015); }  /* the paper pushes back */
+	100% { transform: rotate(0.4deg)  scale(0.98);  }  /* held */
+}
+
+.b-frappe { background-color: var(--mv-blue); color: #fff; }
+.b-frappe:hover, .b-frappe.is-hover {
+	transform: rotate(-1.2deg);
+	box-shadow: 0 12px 30px rgba(58,58,58,.12);
+}
+.b-frappe:active {
+	animation: mv-frappe .24s cubic-bezier(.2, .85, .3, 1) both;
+	filter: brightness(.92);
+	outline: 5px dashed color-mix(in srgb, currentColor 60%, transparent);
+	outline-offset: -5px;
+}
+/* The frozen swatch cannot animate, so it shows the frame the animation ends on. */
+.b-frappe.is-active {
+	transform: rotate(.4deg) scale(.98);
+	filter: brightness(.92);
+	outline: 5px dashed color-mix(in srgb, currentColor 60%, transparent);
+	outline-offset: -5px;
+}
+
+/* 14 ── Onde: the impact travels outward.
+        The ring is present at rest — 14px wide and fully transparent — and
+        collapses to nothing, opaque, on press. Because the collapse is given a
+        0s duration and the return .55s, the ring snaps in under the finger and
+        then expands outward as it fades when the button is released. The
+        shockwave plays on release, which is also when a stamp is lifted.
+
+        box-shadow does this without a pseudo-element, which is why it can go on
+        the comment submit; the usual ::after ripple cannot. */
+.b-onde {
+	background-color: var(--mv-warm);
+	color: #fff;
+	box-shadow: 0 0 0 14px rgba(136, 99, 83, 0), 0 8px 22px rgba(58,58,58,.08);
+	transition: box-shadow .55s ease-out, transform .2s cubic-bezier(.34, 1.6, .64, 1),
+	            filter .2s, background-color .2s;
+}
+.b-onde:hover, .b-onde.is-hover {
+	transform: rotate(-1.2deg);
+	box-shadow: 0 0 0 14px rgba(136, 99, 83, 0), 0 12px 30px rgba(58,58,58,.14);
+}
+.b-onde:active, .b-onde.is-active {
+	transform: rotate(.4deg) scale(.97);
+	filter: brightness(.93);
+	box-shadow: 0 0 0 0 rgba(136, 99, 83, .5), 0 2px 6px rgba(58,58,58,.2);
+	transition: box-shadow 0s, transform .1s ease-out, filter .1s;
+}
+
+/* 15 ── Oblitération: the cancellation stroke.
+        A postmark is not stamped so much as dragged: the ink lands as a band of
+        parallel strokes across the face of the thing being cancelled. Here the
+        band is a repeating gradient whose width goes 0 -> 45% -> 100%, so the
+        stroke is half-drawn on hover and completed on click.
+
+        The angle is -8deg rather than 0, because a hand-held canceller is never
+        square to the paper. */
+.b-obliteration {
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	border-color: var(--mv-warm);
+	background-image: repeating-linear-gradient(
+		-8deg,
+		color-mix(in srgb, var(--mv-warm-deep) 42%, transparent) 0 3px,
+		transparent 3px 9px
+	);
+	background-repeat: no-repeat;
+	background-position: 0 50%;
+	background-size: 0% 78%;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), background-size .35s ease-out,
+	            border-color .2s, box-shadow .2s;
+}
+.b-obliteration:hover, .b-obliteration.is-hover {
+	background-size: 46% 78%;
+	border-color: var(--mv-warm-deep);
+	transform: rotate(-1deg);
+}
+.b-obliteration:active, .b-obliteration.is-active {
+	background-size: 100% 78%;
+	border-color: var(--mv-warm-deep);
+	transform: rotate(.4deg) scale(.98);
+	transition-duration: .1s, .12s, .2s, .2s;
+}
+
+/* 16 ── Encreur: the stamp is loaded before it lands.
+        Rest is an empty outline — a stamp with no ink on it. Hover floods it
+        from the pad below; the press is the impression.
+
+        The flood is a radial gradient scaled from 0 to well past the button's
+        own box, so the leading edge stays curved rather than arriving as a
+        flat wall of colour.
+
+        Both anchors have to say 50% 100%: the circle's centre within the image,
+        and the image's position within the button. Percentage positioning
+        aligns the image's own 100% point with the button's, so the image's
+        bottom edge stays pinned to the button's bottom edge however large it
+        grows, and the disc expands upward out of the pad. Anchoring anywhere
+        else makes the size the thing that decides where the ink starts, and it
+        arrives from the top instead. */
+.b-encreur {
+	border-color: var(--mv-blue);
+	color: var(--mv-blue-deep);
+	background-color: #fff;
+	background-image: radial-gradient(circle at 50% 100%, var(--mv-blue) 99%, transparent 100%);
+	background-repeat: no-repeat;
+	background-position: 50% 100%;
+	background-size: 0% 0%;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), background-size .3s ease-out,
+	            color .18s .06s, filter .2s;
+}
+.b-encreur:hover, .b-encreur.is-hover {
+	background-size: 230% 270%;
+	color: #fff;
+	transform: rotate(-1.2deg);
+}
+.b-encreur:active, .b-encreur.is-active {
+	background-size: 230% 270%;
+	color: #fff;
+	filter: brightness(.9);
+	transform: rotate(.4deg) scale(.98);
+	outline: 5px dashed color-mix(in srgb, currentColor 55%, transparent);
+	outline-offset: -5px;
+}
+
+/* 17 ── Gaufrage: the dry seal.
+        Consulates and notaries emboss rather than ink — no colour at all, only
+        relief. At rest the label sits a hair proud of the card (a light
+        text-shadow below it); pressed, the whole face sinks: a dark inset at
+        the top edge, a light one at the bottom, and the text-shadow flips above
+        the letters.
+
+        There is no `text-shadow: inset`. Only box-shadow has that keyword, so
+        sunken text has to be faked by moving the highlight to the opposite
+        side of the glyphs — which is all a real deboss is, optically. */
+.b-gaufrage {
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 32%, transparent);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95);
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s, text-shadow .15s;
+}
+.b-gaufrage:hover, .b-gaufrage.is-hover {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            0 6px 16px rgba(58,58,58,.1);
+	transform: rotate(-1deg);
+}
+.b-gaufrage:active, .b-gaufrage.is-active {
+	transform: rotate(.3deg) scale(.99);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            inset 0 3px 4px rgba(92, 61, 46, .26),
+	            inset 0 -2px 0 rgba(255,255,255,.9);
+	text-shadow: 0 -1px 0 rgba(255,255,255,.8);
+}
+
+/* 18 ── Décalage: the double impression.
+        A stamp that rocks on the pad prints twice, a fraction out of register.
+        Here the misprint is the resting state — the label carries a coloured
+        ghost a pixel and a half down and to the right — and the press is what
+        brings it into register. The button is corrected by being used.
+
+        text-shadow rather than a duplicated element, so it survives on an
+        <input>. It also has to be named in the transition explicitly; the
+        shared .btn transition does not carry it. */
+.b-decalage {
+	background-color: #fff;
+	color: var(--mv-warm-deep);
+	border-color: var(--mv-warm);
+	text-shadow: 1.5px 1.5px 0 color-mix(in srgb, var(--mv-highlight) 38%, transparent);
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), text-shadow .2s,
+	            background-color .2s, border-color .2s;
+}
+.b-decalage:hover, .b-decalage.is-hover {
+	transform: rotate(-1.2deg);
+	text-shadow: 2.5px 2px 0 color-mix(in srgb, var(--mv-highlight) 50%, transparent);
+	border-color: var(--mv-warm-deep);
+}
+.b-decalage:active, .b-decalage.is-active {
+	transform: rotate(.4deg) scale(.98);
+	text-shadow: 0 0 0 transparent;
+	background-color: var(--mv-cream);
+	border-color: var(--mv-warm-deep);
+	outline: 4px dashed color-mix(in srgb, var(--mv-warm-deep) 55%, transparent);
+	outline-offset: -4px;
+}
+
+/* 19 ── Dentelé: the perforated edge.
+        Billet notches two ends; a postage stamp is perforated on all four, and
+        the silhouette alone says "stamp" before any motion does.
+
+        Four gradient layers, each tiled along one edge: a 13px-wide tile
+        repeated across the top draws a row of half-circles, and so on round.
+        Painted, not masked — `mask` would clip the box-shadow and the focus
+        ring away with the perforations, which is too high a price.
+
+        Same bargain as Billet: the holes are painted in the colour of whatever
+        is behind the button, so --perf-bg has to be set per context. And the
+        press darkens with background-color rather than filter, because a filter
+        would darken the holes too and they would stop matching the page. */
+.b-dentele {
+	--perf-bg: #fff;
+	--r: 5px;
+	border-radius: 2px;
+	border-color: transparent;
+	background-color: var(--mv-blue-tint);
+	color: var(--mv-blue-deep);
+	background-image:
+		radial-gradient(circle at 50% 0,    var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 50% 100%, var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 0 50%,    var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 100% 50%, var(--perf-bg) var(--r), transparent calc(var(--r) + .5px));
+	background-size: 13px 100%, 13px 100%, 100% 13px, 100% 13px;
+	background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+	background-position: 0 0, 0 100%, 0 0, 100% 0;
+}
+/* Hover must not go to the perforation colour, or the holes disappear into it
+   and the stamp loses the only thing that made it a stamp. It darkens instead. */
+.b-dentele:hover, .b-dentele.is-hover {
+	background-color: color-mix(in srgb, var(--mv-blue) 15%, #fff);
+	transform: rotate(-1.2deg);
+	box-shadow: 0 10px 24px rgba(58,58,58,.14);
+}
+.b-dentele:active, .b-dentele.is-active {
+	background-color: color-mix(in srgb, var(--mv-blue) 28%, #fff);
+	transform: rotate(.4deg) scale(.98);
+	box-shadow: 0 2px 6px rgba(58,58,58,.18);
+	outline: 4px dashed color-mix(in srgb, var(--mv-blue-deep) 50%, transparent);
+	outline-offset: -6px;
+}
+
+/* 20 ── Encrage: ink never lands evenly.
+        The only one whose idea lives in the resting state. Three soft ellipses
+        — two light, one dark — sit over the fill and keep it from ever being
+        flat, so the button looks hand-stamped before anyone touches it.
+
+        The interaction is a re-inking: background-position shifts, so the
+        mottling moves independently of the button and the second impression
+        does not look like the first. Positions are animatable; the gradients'
+        own colour stops are not, reliably, which is why the patches are always
+        present rather than fading in. */
+.b-encrage {
+	background-color: var(--mv-blue);
+	color: #fff;
+	background-image:
+		radial-gradient(ellipse 62% 85% at 20% 28%, rgba(255,255,255,.17), transparent 62%),
+		radial-gradient(ellipse 48% 72% at 74% 76%, rgba(255,255,255,.13), transparent 60%),
+		radial-gradient(ellipse 34% 55% at 93% 22%, rgba(0,0,0,.16),      transparent 62%);
+	background-repeat: no-repeat;
+	background-position: 0 0, 0 0, 0 0;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), background-position .3s ease-out,
+	            filter .2s, box-shadow .2s;
+}
+.b-encrage:hover, .b-encrage.is-hover {
+	transform: rotate(-1.2deg);
+	background-position: -9px -5px, 7px 4px, -5px 3px;
+	box-shadow: 0 12px 30px rgba(58,58,58,.12);
+}
+.b-encrage:active, .b-encrage.is-active {
+	transform: rotate(.4deg) scale(.98);
+	background-position: 6px 4px, -8px -3px, 4px -4px;
+	filter: brightness(.92);
+	outline: 5px dashed color-mix(in srgb, currentColor 60%, transparent);
+	outline-offset: -5px;
+}
+
+/* The frozen swatches are a third of the size: a 5px perforation and a 14px
+   shockwave both swamp them. */
+.states .b-dentele { --r: 3px; background-size: 8px 100%, 8px 100%, 100% 8px, 100% 8px; }
+.states .b-onde    { box-shadow: 0 0 0 7px rgba(136, 99, 83, 0), 0 8px 22px rgba(58,58,58,.08); }
+.states .b-onde.is-active { box-shadow: 0 0 0 0 rgba(136, 99, 83, .5), 0 2px 6px rgba(58,58,58,.2); }
+
+/* On the cream proposal panels the painted holes have to be cream as well. */
+.demo .b-dentele { --perf-bg: var(--mv-cream); }
+.demo.on-white .b-dentele { --perf-bg: #fff; }
+
+/* =========================================================================
+   THIRD SERIES — THE DRY SEAL
+   =========================================================================
+
+   Gaufrage was the one worth pulling on, so this series is six variations on
+   it: embossing crossed with each of the other ideas in turn.
+
+   What makes it different from everything else on this page is that it has no
+   colour of its own. A consulate seal, a notary's crimp, the blind stamp in the
+   corner of a photographic print — none of them adds ink. They deform the paper
+   and let the light do the rest, which is why they read as official: you cannot
+   photocopy relief.
+
+   Two things follow from that, and they govern every variant below.
+
+   1. Relief is a lie told with light, and the lie only works if the light comes
+      from one direction and never changes. Everything here is lit from above:
+      a highlight below the glyphs and below the bottom rim when the face is
+      proud, and the same highlight moved above them when it is sunken. That is
+      all a deboss is, optically. There is no `text-shadow: inset` to do it for
+      us -- only box-shadow has that keyword.
+
+   2. The paper has to be visible for its deformation to be visible. These sit
+      on cream rather than white, and the fill barely shifts between states.
+      A seal that changes colour on hover is not a seal any more.
+   ========================================================================= */
+
+/* 21 ── Sceau frappé: gaufrage + frappe.
+        An embossing press is worked by hand, and it takes real force -- there
+        is no ink to help, only pressure. So this one gets the recoil keyframe
+        from 13, but pitched lower and slower: a seal press does not bounce the
+        way a rubber stamp does, it bottoms out. */
+@keyframes mv-sceau {
+	0%   { transform: rotate(-1deg)   scale(1);     }
+	45%  { transform: rotate(0.35deg) scale(0.965); }  /* bottomed out */
+	70%  { transform: rotate(0.2deg)  scale(1.005); }  /* the paper barely answers */
+	100% { transform: rotate(0.3deg)  scale(0.99);  }
+}
+
+.b-sceau-frappe {
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 32%, transparent);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95);
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s, text-shadow .15s;
+}
+.b-sceau-frappe:hover, .b-sceau-frappe.is-hover {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            0 6px 16px rgba(58,58,58,.1);
+}
+.b-sceau-frappe:active {
+	animation: mv-sceau .28s cubic-bezier(.25, .7, .3, 1) both;
+}
+.b-sceau-frappe:active,
+.b-sceau-frappe.is-active {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            inset 0 3px 5px rgba(92, 61, 46, .3),
+	            inset 0 -2px 0 rgba(255,255,255,.9);
+	text-shadow: 0 -1px 0 rgba(255,255,255,.8);
+}
+.b-sceau-frappe.is-active { transform: rotate(.3deg) scale(.99); }
+
+/* 22 ── Sceau dentelé: gaufrage + dentelé.
+        A notary's wafer seal is scalloped, and the scallop is half of why it
+        reads as official before you have read a word of it.
+
+        This is where the two techniques fight, and the fight is worth writing
+        down. The holes are painted in the page's colour on top of the fill; an
+        `inset` box-shadow is painted on top of the background, so the rim and
+        deboss shadows of Gaufrage would darken the holes and they would stop
+        matching the page behind them -- the one thing a painted hole must do.
+
+        So the relief here is a background layer rather than a box-shadow, and
+        it is stacked *under* the scallops: earlier in the background-image list
+        means nearer the front, so the four scallop layers come first and paint
+        over the shading. The shading is revealed by growing it from 0% to full
+        height, because background-size animates reliably and a gradient's own
+        colour stops do not. */
+.b-sceau-dentele {
+	--perf-bg: #fff;
+	--r: 4px;
+	border-radius: 2px;
+	border-color: transparent;
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95);
+	background-image:
+		/* scallops, on top */
+		radial-gradient(circle at 50% 0,    var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 50% 100%, var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 0 50%,    var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 100% 50%, var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		/* the deboss, underneath */
+		linear-gradient(rgba(92, 61, 46, .22), rgba(92, 61, 46, .04) 55%, transparent 75%);
+	background-size: 11px 100%, 11px 100%, 100% 11px, 100% 11px, 100% 0%;
+	background-repeat: repeat-x, repeat-x, repeat-y, repeat-y, no-repeat;
+	background-position: 0 0, 0 100%, 0 0, 100% 0, 0 0;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), background-size .18s, text-shadow .15s;
+}
+.b-sceau-dentele:hover, .b-sceau-dentele.is-hover {
+	transform: rotate(-1deg);
+	background-size: 11px 100%, 11px 100%, 100% 11px, 100% 11px, 100% 22%;
+}
+.b-sceau-dentele:active, .b-sceau-dentele.is-active {
+	transform: rotate(.3deg) scale(.99);
+	background-size: 11px 100%, 11px 100%, 100% 11px, 100% 11px, 100% 100%;
+	text-shadow: 0 -1px 0 rgba(255,255,255,.8);
+}
+
+/* 23 ── Gaufrage encré: gaufrage + encreur.
+        The combination press, which debosses and inks in the same stroke --
+        a passport entry stamp does both, which is why the ink sits unevenly in
+        a channel rather than flat on the surface.
+
+        Two stages, and the order matters: hover deepens the relief only (the
+        press is being brought down), and the click floods the channel. The ink
+        arrives through the same bottom-anchored gradient Encreur uses, so it
+        rises into the relief rather than landing on top of it. */
+.b-gaufrage-encre {
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 32%, transparent);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95);
+	background-image: radial-gradient(circle at 50% 100%, var(--mv-warm-deep) 99%, transparent 100%);
+	background-repeat: no-repeat;
+	background-position: 50% 100%;
+	background-size: 0% 0%;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s,
+	            background-size .22s ease-out, color .15s .04s, text-shadow .15s;
+}
+.b-gaufrage-encre:hover, .b-gaufrage-encre.is-hover {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            0 6px 16px rgba(58,58,58,.1);
+}
+.b-gaufrage-encre:active, .b-gaufrage-encre.is-active {
+	transform: rotate(.3deg) scale(.99);
+	background-size: 230% 270%;
+	color: var(--mv-cream);
+	text-shadow: 0 -1px 0 rgba(0,0,0,.35);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm-deep) 75%, transparent),
+	            inset 0 3px 5px rgba(0, 0, 0, .3),
+	            inset 0 -2px 0 rgba(255,255,255,.28);
+}
+
+/* 24 ── Contre-gaufrage: the relief inverted.
+        Every other variant here is sunken on press. This one starts proud --
+        raised printing, the way a letterpress card or an engraved invitation
+        sits above the paper -- and pressing flattens it.
+
+        Worth having in the set because it is the only one whose interaction
+        *removes* something. The button is at its most three-dimensional when
+        you are not touching it, which is an odd and rather nice thing for a
+        button to do. */
+.b-contre-gaufrage {
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	box-shadow: inset 0 1px 0 rgba(255,255,255,.95),
+	            inset 0 -2px 4px rgba(92, 61, 46, .2),
+	            inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 30%, transparent),
+	            0 2px 3px rgba(92, 61, 46, .12);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95), 0 2px 2px rgba(92, 61, 46, .18);
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), box-shadow .2s, text-shadow .2s;
+}
+.b-contre-gaufrage:hover, .b-contre-gaufrage.is-hover {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 1px 0 rgba(255,255,255,.95),
+	            inset 0 -3px 6px rgba(92, 61, 46, .26),
+	            inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 50%, transparent),
+	            0 5px 10px rgba(92, 61, 46, .16);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95), 0 3px 3px rgba(92, 61, 46, .22);
+}
+.b-contre-gaufrage:active, .b-contre-gaufrage.is-active {
+	transform: rotate(.3deg) scale(.99);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 50%, transparent),
+	            inset 0 1px 2px rgba(92, 61, 46, .14);
+	text-shadow: none;
+}
+
+/* 25 ── Onde sèche: gaufrage + onde.
+        Physically the most honest of the six. An embossing press deforms a
+        region of paper wider than the die itself -- the sheet cups around the
+        impression -- so a ring travelling outward is not decoration here, it is
+        what the paper actually does.
+
+        Same mechanism as 14: the ring is present at rest, transparent and 12px
+        wide; it collapses to nothing and opaque under the finger in 0s, and
+        takes .5s to expand and fade on release. In warm brown rather than a
+        shadow grey, so it reads as paper rather than as glow. */
+.b-onde-seche {
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 32%, transparent),
+	            0 0 0 12px rgba(136, 99, 83, 0);
+	transition: box-shadow .5s ease-out, transform .2s cubic-bezier(.34, 1.6, .64, 1),
+	            text-shadow .15s;
+}
+.b-onde-seche:hover, .b-onde-seche.is-hover {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            0 0 0 12px rgba(136, 99, 83, 0);
+}
+.b-onde-seche:active, .b-onde-seche.is-active {
+	transform: rotate(.3deg) scale(.99);
+	text-shadow: 0 -1px 0 rgba(255,255,255,.8);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 60%, transparent),
+	            inset 0 3px 5px rgba(92, 61, 46, .3),
+	            inset 0 -2px 0 rgba(255,255,255,.9),
+	            0 0 0 0 rgba(136, 99, 83, .4);
+	transition: box-shadow 0s, transform .1s ease-out, text-shadow .1s;
+}
+
+/* 26 ── Sceau complet: all of it at once.
+        Scalloped edge, relief, the seal-press recoil, and ink in the channel on
+        the third beat. It exists for the same reason Billet tamponné does --
+        to show where the ceiling is, so the calmer ones have something to be
+        calmer than. Four ideas is too many for a button that appears twice on a
+        page; it is about right for one that appears once, at the end of a
+        newsletter form.
+
+        The scallops force every choice here, as in 22: relief and ink are both
+        background layers stacked beneath them, never inset shadows. */
+.b-sceau-complet {
+	--perf-bg: #fff;
+	--r: 4px;
+	border-radius: 2px;
+	border-color: transparent;
+	background-color: var(--mv-cream);
+	color: var(--mv-warm-deep);
+	text-shadow: 0 1px 0 rgba(255,255,255,.95);
+	background-image:
+		radial-gradient(circle at 50% 0,    var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 50% 100%, var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 0 50%,    var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		radial-gradient(circle at 100% 50%, var(--perf-bg) var(--r), transparent calc(var(--r) + .5px)),
+		linear-gradient(rgba(92, 61, 46, .22), rgba(92, 61, 46, .04) 55%, transparent 75%),
+		radial-gradient(circle at 50% 100%, var(--mv-warm-deep) 99%, transparent 100%);
+	background-size: 11px 100%, 11px 100%, 100% 11px, 100% 11px, 100% 0%, 0% 0%;
+	background-repeat: repeat-x, repeat-x, repeat-y, repeat-y, no-repeat, no-repeat;
+	background-position: 0 0, 0 100%, 0 0, 100% 0, 0 0, 50% 100%;
+	transition: transform .2s cubic-bezier(.34, 1.6, .64, 1), background-size .22s ease-out,
+	            color .15s .04s, text-shadow .15s;
+}
+.b-sceau-complet:hover, .b-sceau-complet.is-hover {
+	transform: rotate(-1deg);
+	background-size: 11px 100%, 11px 100%, 100% 11px, 100% 11px, 100% 22%, 0% 0%;
+}
+.b-sceau-complet:active {
+	animation: mv-sceau .28s cubic-bezier(.25, .7, .3, 1) both;
+}
+.b-sceau-complet:active,
+.b-sceau-complet.is-active {
+	background-size: 11px 100%, 11px 100%, 100% 11px, 100% 11px, 100% 100%, 230% 270%;
+	color: var(--mv-cream);
+	text-shadow: 0 -1px 0 rgba(0,0,0,.35);
+}
+.b-sceau-complet.is-active { transform: rotate(.3deg) scale(.99); }
+
+/* The frozen swatches are a third of the size; a 4px scallop and a 12px ring
+   both swamp them. */
+.states .b-sceau-dentele,
+.states .b-sceau-complet { --r: 2.5px; background-size: 7px 100%, 7px 100%, 100% 7px, 100% 7px, 100% 0%, 0% 0%; }
+.states .b-sceau-dentele.is-hover,
+.states .b-sceau-complet.is-hover { background-size: 7px 100%, 7px 100%, 100% 7px, 100% 7px, 100% 22%, 0% 0%; }
+.states .b-sceau-dentele.is-active { background-size: 7px 100%, 7px 100%, 100% 7px, 100% 7px, 100% 100%, 0% 0%; }
+.states .b-sceau-complet.is-active { background-size: 7px 100%, 7px 100%, 100% 7px, 100% 7px, 100% 100%, 230% 270%; }
+.states .b-onde-seche {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-warm) 32%, transparent),
+	            0 0 0 6px rgba(136, 99, 83, 0);
+}
+
+/* Scallops are painted, not cut: they take the colour of whatever is behind. */
+.demo .b-sceau-dentele,
+.demo .b-sceau-complet { --perf-bg: var(--mv-cream); }
+.demo.on-white .b-sceau-dentele,
+.demo.on-white .b-sceau-complet { --perf-bg: #fff; }
 
 /* =========================================================================
    A SET FOR MAMAN VOYAGE
@@ -398,4 +1001,26 @@ pre .v { color: #f0b9a0; }
 @media (prefers-reduced-motion: reduce) {
 	.btn { transition: background-color .2s, color .2s, border-color .2s, box-shadow .2s; }
 	.btn:hover, .btn:active, .btn.is-hover, .btn.is-active { transform: none; }
+
+	/* The second series adds two things a blanket `transform: none` does not
+	   reach: a keyframe animation, and a ring that expands outward. Both are
+	   motion even though neither is a transform. The colour, the perforation
+	   and the press ring all stay — those are not. */
+	.b-frappe:active,
+	.b-sceau-frappe:active,
+	.b-sceau-complet:active { animation: none; }
+
+	.b-onde-seche,
+	.b-onde-seche:hover, .b-onde-seche:active,
+	.b-onde-seche.is-hover, .b-onde-seche.is-active {
+		transition: box-shadow .2s, text-shadow .15s;
+	}
+
+	.b-onde,
+	.b-onde:hover, .b-onde:active,
+	.b-onde.is-hover, .b-onde.is-active {
+		box-shadow: 0 0 0 0 rgba(136, 99, 83, 0), 0 8px 22px rgba(58,58,58,.08);
+		transition: background-color .2s, filter .2s;
+	}
+	.b-onde:active, .b-onde.is-active { box-shadow: 0 0 0 3px rgba(136, 99, 83, .5); }
 }

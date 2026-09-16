@@ -1,0 +1,226 @@
+/**
+ * Mavo For You — the /pour-vous/ page.
+ *
+ * Loaded only on that page, on top of mavo-for-you.css. The tiles are the
+ * site's own .mv-tile components again, so what is here is the shelf they
+ * stand on: a heading with two arrows, and a strip that scrolls under it.
+ *
+ * The strip is a plain overflow container with scroll snapping. Touch, trackpad
+ * and keyboard all drive it natively; the arrows in the JS only call scrollTo()
+ * on the same element. Nothing here depends on the script having run, which is
+ * why a row still works if the arrows never appear.
+ */
+
+/* ----- Shell ------------------------------------------------------------- */
+
+.mfy-page-placeholder {
+	margin: 1.5em 0 0;
+}
+
+.mfy-page__loading,
+.mfy-page__empty {
+	margin: 0;
+	padding: 1.25em 0;
+	font-size: 0.95em;
+	line-height: 1.55;
+	color: var(--mv-color-subtle, #757575);
+}
+
+.mfy-page {
+	opacity: 0;
+	transform: translateY(6px);
+	transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.mfy-page.is-visible {
+	opacity: 1;
+	transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mfy-page {
+		opacity: 1;
+		transform: none;
+		transition: none;
+	}
+}
+
+.mfy-page__intro {
+	margin: 0 0 2em;
+	max-width: 46em;
+	font-size: 0.9em;
+	line-height: 1.55;
+	color: var(--mv-color-subtle, #757575);
+}
+
+/* ----- One row ----------------------------------------------------------- */
+
+.mfy-page__row {
+	margin: 0 0 2.5em;
+}
+
+.mfy-page__row-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 1rem;
+	margin-bottom: 0.85em;
+}
+
+.mfy-page__row-title {
+	margin: 0;
+	font-size: 1.18em;
+	line-height: 1.3;
+	color: var(--mv-color-heading, #3a3a3a);
+}
+
+/*
+ * The accent bar the block's own heading carries, at row scale.
+ *
+ * It is what ties a strip to the "Pour vous" section a reader arrived from:
+ * same mark, same colour, smaller. Rows built from a hub take the warm brown
+ * instead, because a hub row is an editorial statement rather than a computed
+ * one, and the site already uses that colour to say so.
+ */
+.mfy-page__row-title::after {
+	content: "";
+	display: block;
+	width: 1.9em;
+	height: 3px;
+	margin-top: 0.35em;
+	border-radius: 2px;
+	background: var(--mv-color-primary, #4e74a5);
+}
+
+.mfy-page__row--hub .mfy-page__row-title::after {
+	background: var(--mv-color-accent, #886353);
+}
+
+.mfy-page__row--search .mfy-page__row-title::after {
+	background: var(--mv-color-highlight, #a92d87);
+}
+
+/*
+ * "Recently viewed" is the page's footnote, not one of its suggestions: the
+ * reader's own history, last, quieter, with no accent bar claiming it is a
+ * recommendation.
+ */
+.mfy-page__row--recent {
+	margin-top: 3em;
+	padding-top: 1.75em;
+	border-top: 1px solid var(--mv-color-divider, rgba(0, 0, 0, 0.08));
+}
+
+.mfy-page__row--recent .mfy-page__row-title {
+	font-size: 1em;
+	color: var(--mv-color-subtle, #757575);
+}
+
+.mfy-page__row--recent .mfy-page__row-title::after {
+	display: none;
+}
+
+/* ----- Arrows ------------------------------------------------------------ */
+
+.mfy-page__nav {
+	display: flex;
+	flex: 0 0 auto;
+	gap: 0.4rem;
+}
+
+/* display:flex above would otherwise win over the hidden attribute the
+   script sets on a strip that already fits. */
+.mfy-page__nav[hidden] {
+	display: none;
+}
+
+.mfy-page__arrow {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 2.1rem;
+	height: 2.1rem;
+	padding: 0;
+	border: 1px solid var(--mv-color-divider, rgba(0, 0, 0, 0.12));
+	border-radius: 50%;
+	background: var(--mv-color-surface, #fff);
+	color: var(--mv-color-primary, #4e74a5);
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.mfy-page__arrow:hover,
+.mfy-page__arrow:focus-visible {
+	border-color: var(--mv-color-primary, #4e74a5);
+	background: var(--mv-color-primary, #4e74a5);
+	color: #fff;
+}
+
+.mfy-page__arrow:focus-visible {
+	outline: 2px solid var(--mv-color-highlight, #a92d87);
+	outline-offset: 2px;
+}
+
+.mfy-page__arrow svg {
+	display: block;
+}
+
+/* ----- The strip --------------------------------------------------------- */
+
+.mfy-page__viewport {
+	position: relative;
+}
+
+.mfy-page__track {
+	display: flex;
+	gap: 1.1rem;
+	margin: 0;
+	/* Room for the tiles' own shadow and focus ring, which a clipping
+	   overflow container would otherwise shave off. */
+	padding: 4px 4px 0.75rem;
+	list-style: none;
+	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	scroll-snap-type: x mandatory;
+	scroll-behavior: smooth;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-width: thin;
+	scrollbar-color: var(--mv-color-divider, rgba(0, 0, 0, 0.18)) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.mfy-page__track {
+		scroll-behavior: auto;
+	}
+}
+
+.mfy-page__track:focus-visible {
+	outline: 2px solid var(--mv-color-highlight, #a92d87);
+	outline-offset: 2px;
+}
+
+.mfy-page__track::-webkit-scrollbar {
+	height: 6px;
+}
+
+.mfy-page__track::-webkit-scrollbar-thumb {
+	border-radius: 3px;
+	background: var(--mv-color-divider, rgba(0, 0, 0, 0.18));
+}
+
+.mfy-page__slide {
+	flex: 0 0 min(76vw, 250px);
+	margin: 0;
+	scroll-snap-align: start;
+}
+
+/* The tile fills its slide, so a row of short titles still lines up. */
+.mfy-page__slide > .mv-tile {
+	height: 100%;
+}
+
+@media (min-width: 900px) {
+	.mfy-page__slide {
+		flex-basis: 260px;
+	}
+}

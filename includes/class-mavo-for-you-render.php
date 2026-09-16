@@ -166,10 +166,15 @@ class MFY_Render {
 		$is_search  = is_search();
 		$mark_read  = MFY_Config::mark_read_enabled() && MFY_Config::mark_read_everywhere();
 
-		// Three reasons to load: the block, a search page (where the script
-		// only records the search term), and any other page where links to
-		// already-read articles should be marked.
-		if ( ! $show_block && ! $is_search && ! $mark_read ) {
+		// The suggestions page builds itself out of the local profile this
+		// script owns, so it is a reason to load even though it shows no block
+		// of its own and marks nothing until its rows arrive.
+		$is_page = MFY_Page::is_page();
+
+		// Four reasons to load: the block, a search page (where the script
+		// only records the search term), the suggestions page, and any other
+		// page where links to already-read articles should be marked.
+		if ( ! $show_block && ! $is_search && ! $is_page && ! $mark_read ) {
 			return;
 		}
 

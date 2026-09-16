@@ -5,6 +5,7 @@ define( 'ABSPATH', '/' );
 define( 'DAY_IN_SECONDS', 86400 );
 define( 'HOUR_IN_SECONDS', 3600 );
 define( 'ARRAY_A', 'ARRAY_A' );
+define( 'OBJECT', 'OBJECT' );
 
 $GLOBALS['MOCK_POSTS'] = [];   // id => ['title'=>, 'lang'=>, 'status'=>, 'type'=>]
 $GLOBALS['MOCK_WEIGHTS'] = []; // id => ['lang'=>, 'slugs'=>[slug=>w]]
@@ -58,6 +59,15 @@ function get_post( $id ) {
 	return $p;
 }
 function pll_get_post_language( $id, $field = 'slug' ) { return $GLOBALS['MOCK_POSTS'][ (int) $id ]['lang'] ?? ''; }
+function delete_transient( $k ) { unset( $GLOBALS['MOCK_TRANSIENTS'][ $k ] ); return true; }
+
+/** MFY_Page resolves /pour-vous/ by slug; the fixture is the page table. */
+function get_page_by_path( $path, $output = null, $post_type = 'page' ) {
+	foreach ( $GLOBALS['MOCK_POSTS'] as $id => $post ) {
+		if ( ( $post['slug'] ?? '' ) === $path && $post['type'] === $post_type ) { return get_post( $id ); }
+	}
+	return null;
+}
 
 class WP_Post { public $ID; public $post_status; public $post_type; public $post_name = ''; public $post_content = ''; }
 
@@ -314,6 +324,8 @@ require_once __DIR__ . '/../includes/class-mavo-for-you-cache.php';
 require_once __DIR__ . '/../includes/class-mavo-for-you-geo.php';
 require_once __DIR__ . '/../includes/class-mavo-for-you-hubs.php';
 require_once __DIR__ . '/../includes/class-mavo-for-you-scorer.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-rows.php';
+require_once __DIR__ . '/../includes/class-mavo-for-you-page.php';
 
 /**
  * Geo Tagger stand-in: places keyed by id, and a post -> place-chain map.
@@ -334,6 +346,13 @@ function mock_geo( int $post_id, array $levels ): void {
 function mock_post( int $id, string $title, string $lang, array $weights, string $status = 'publish', string $type = 'post', string $slug = '' ): void {
 	$GLOBALS['MOCK_POSTS'][ $id ]   = [ 'title' => $title, 'lang' => $lang, 'status' => $status, 'type' => $type, 'slug' => $slug, 'content' => '' ];
 	$GLOBALS['MOCK_WEIGHTS'][ $id ] = [ 'lang' => $lang, 'slugs' => $weights ];
+	mock_bust();
+}
+
+/** Creates the suggestions page a language links to, at its configured slug. */
+function mock_suggestions_page( int $id, string $lang, string $slug ): void {
+	mock_post( $id, 'Pour vous', $lang, [], 'publish', 'page', $slug );
+	mock_content( $id, '[mavo_for_you_page]' );
 	mock_bust();
 }
 

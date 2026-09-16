@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Mavo For You
  * Plugin URI:  https://mamanvoyage.com
- * Description: Session-only, privacy-conscious content personalization. Adds a "Pour vous" block after the content of eligible posts, loaded after page load so full-page caching stays intact.
- * Version:     0.8.0
+ * Description: Session-only, privacy-conscious content personalization. Adds a "Pour vous" block after the content of eligible posts, and a standalone suggestions page via [mavo_for_you_page], both loaded after page load so full-page caching stays intact.
+ * Version:     0.9.0
  * Author:      Mavo
  * Text Domain: mavo-for-you
  * Requires at least: 6.3
@@ -12,7 +12,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'MFY_VERSION',    '0.8.0' );
+define( 'MFY_VERSION',    '0.9.0' );
 define( 'MFY_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MFY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MFY_PLUGIN_FILE', __FILE__ );
@@ -23,8 +23,10 @@ require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-data.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-geo.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-hubs.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-scorer.php';
+require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-rows.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-rest.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-shortcode.php';
+require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-page.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-render.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-admin.php';
 require_once MFY_PLUGIN_DIR . 'includes/class-mavo-for-you-tuner.php';
@@ -46,4 +48,5 @@ add_action( 'plugins_loaded', static function () {
 	// active during a deploy it registers [geo_related] on plugins_loaded, and
 	// the later registration is the one that wins.
 	add_action( 'init', [ 'MFY_Shortcode', 'init' ] );
+	add_action( 'init', [ 'MFY_Page', 'init' ] );
 } );

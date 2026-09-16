@@ -590,24 +590,37 @@
 		return options;
 	}
 
-	function payload(profile) {
-		var views = profile.views.slice(0, cfg.maxViews).map(function (view) {
-			return {
-				post_id: view.post_id,
-				duration_seconds: clamp(view.duration_seconds, 0, cfg.maxDuration),
-				max_scroll_pct: clamp(view.max_scroll_pct, 0, 100),
-				last_seen: view.last_seen
-			};
-		});
-
+	/**
+	 * The part of the payload that is the session itself, with no opinion
+	 * about what it is being asked for.
+	 *
+	 * Both endpoints want exactly this and nothing else, so the clamping lives
+	 * here once — and the /pour-vous/ page controller reaches it through
+	 * window.mavoForYou rather than reimplementing the profile format.
+	 */
+	function sessionPayload(profile) {
 		return {
-			current_post_id: cfg.postId,
-			lang: cfg.lang,
-			views: views,
+			views: profile.views.slice(0, cfg.maxViews).map(function (view) {
+				return {
+					post_id: view.post_id,
+					duration_seconds: clamp(view.duration_seconds, 0, cfg.maxDuration),
+					max_scroll_pct: clamp(view.max_scroll_pct, 0, 100),
+					last_seen: view.last_seen
+				};
+			}),
 			searches: profile.searches.slice(-cfg.maxSearches),
 			referral: profile.referral || null,
 			debug: !!cfg.debug
 		};
+	}
+
+	function payload(profile) {
+		var body = sessionPayload(profile);
+
+		body.current_post_id = cfg.postId;
+		body.lang = cfg.lang;
+
+		return body;
 	}
 
 	function request(profile, host) {
@@ -768,6 +781,10 @@
 			section.appendChild(recent);
 		}
 
+		if (data.page && data.page.url && data.page.label) {
+			section.appendChild(moreLink(data.page));
+		}
+
 		section.appendChild(resetControl(host));
 
 		host.innerHTML = '';
@@ -781,6 +798,24 @@
 		window.requestAnimationFrame(function () {
 			section.classList.add('is-visible');
 		});
+	}
+
+	/**
+	 * The link on to /pour-vous/, when the server says the session can fill
+	 * that page.
+	 *
+	 * An ordinary crawlable link, like every other link this plugin emits. It
+	 * sits above the reset control and below the suggestions, where it reads
+	 * as "there is more of this" rather than as a call to action.
+	 */
+	function moreLink(page) {
+		var wrap = el('p', 'mfy__more');
+		var link = el('a', 'mfy__more-link', page.label);
+
+		link.href = page.url;
+		wrap.appendChild(link);
+
+		return wrap;
 	}
 
 	/**
@@ -834,6 +869,33 @@
 		details.appendChild(pre);
 		host.appendChild(details);
 	}
+
+	// -------------------------------------------------------------------------
+	// Public surface
+	// -------------------------------------------------------------------------
+
+	/**
+	 * What the /pour-vous/ controller is allowed to know about this one.
+	 *
+	 * Deliberately small, and deliberately not the internals: the page needs
+	 * the session, the tile markup, and a way to re-run the read-marking pass
+	 * over rows that did not exist when the first pass ran. Everything else —
+	 * expiry, tracking, storage format — stays in here, so there is exactly
+	 * one implementation of the local profile on the site.
+	 */
+	window.mavoForYou = {
+		config: cfg,
+		profile: loadProfile,
+		session: function () {
+			return sessionPayload(loadProfile());
+		},
+		card: card,
+		el: el,
+		trim: trim,
+		markRead: function () {
+			markReadLinks(loadProfile());
+		}
+	};
 
 	// -------------------------------------------------------------------------
 	// Boot

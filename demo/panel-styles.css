@@ -1,0 +1,469 @@
+/**
+ * The whole thing, assembled — panels, tiles and buttons as they would ship,
+ * with Sceau frappé (button gallery 21) on everything that is an affordance.
+ *
+ * This file replaces the radius instrument that used to live here. That
+ * question is settled: panels 8px, tiles 4px, buttons 4px. What is not settled
+ * is whether one motion language reads as coherent when every component on a
+ * page is wearing it at once, which is what this page is for.
+ *
+ * ---------------------------------------------------------------------------
+ * THE ONE DECISION THIS FILE MAKES FOR YOU
+ *
+ * Sceau frappé, as drawn in the gallery, is a cream button with warm-brown
+ * text. Taken literally, "put 21 on every button" would repaint the entire site
+ * cream — which is a palette decision, not a motion one, and a much larger
+ * thing than it sounds.
+ *
+ * So the seal is rebuilt here palette-independently: every component keeps the
+ * colours it has today, and takes the seal's relief and its recoil. That is the
+ * same contract .mv-stamp already made ("motion only, no colours"), and the
+ * reason it survived contact with a dozen foreground/background combinations.
+ *
+ * The literal reading is shown too, in its own section at the end, so the two
+ * can be compared rather than argued about.
+ *
+ * ---------------------------------------------------------------------------
+ * HOW RELIEF IS FAKED, AND THE ONE THING THAT CANNOT BE DERIVED
+ *
+ * Relief is a lie told with light, and the lie holds only if the light comes
+ * from one direction and never moves. Everything here is lit from above:
+ *
+ *   proud   highlight below the glyphs, shadow below the bottom rim
+ *   sunken  the same highlight moved above the glyphs, shadow at the top rim
+ *
+ * The rim and the deboss are palette-free — currentColor for the rim,
+ * rgba(0,0,0) and rgba(255,255,255) for the shadow and the bottom light. Those
+ * work on any surface.
+ *
+ * The text highlight cannot be. Whether a raised letter catches light or casts
+ * shadow depends on whether it is lighter or darker than the surface under it,
+ * and CSS has no way to ask. (color-mix cannot branch; light-dark() answers a
+ * different question — the user's colour scheme, not this button's fill.) So
+ * --seal-glint is set once per palette: dark for light-on-dark, white for
+ * dark-on-light. Two lines, and the only place a colour is named.
+ *
+ * ---------------------------------------------------------------------------
+ * WHAT DOES NOT GET THE SEAL
+ *
+ * The tile mapping already shipped in mv-tiles.css, and the seal inherits it
+ * unchanged, because the reasoning behind it has nothing to do with which
+ * motion is used:
+ *
+ *   compact, overlay   small boxes                 full angle
+ *   media, text        cards carrying an excerpt    half angle
+ *   result             full-width rows              no rotation
+ *   utility            a container, not a button    nothing at all
+ *
+ * A corner travels (width / 2) x sin(angle), so the same angle that reads as a
+ * stamp on a button reads as a rendering fault on a 900px row.
+ */
+
+:root {
+	--mv-color-primary:      #4e74a5;
+	--mv-color-primary-deep: #3c5c84;
+	--mv-color-warm:         #886353;
+	--mv-color-warm-dark:    #5c3d2e;
+	--mv-color-highlight:    #a92d87;
+	--mv-color-text:         #3a3a3a;
+	--mv-color-subtle:       #757575;
+	--mv-color-surface:      #fff;
+	--mv-color-bg-soft:      #f0eee9;
+	--mv-color-bg-cream:     #f7f4ef;
+	--mv-color-bg-blue-tint: #eef3f8;
+	--mv-color-border:       #e6e6e6;
+
+	/* The shipped geometry. Nothing on this page varies it. */
+	--mv-tile-radius:    4px;
+	--mv-tile-radius-sm: 3px;
+	--mv-panel-radius:   8px;
+	--mv-tile-pad:       clamp(1rem, 2vw, 1.25rem);
+	--mv-tile-gap:       clamp(1rem, 2.2vw, 1.5rem);
+
+	--mv-elevation-1: 0 8px 22px rgba(58, 58, 58, .08);
+	--mv-elevation-2: 0 12px 30px rgba(58, 58, 58, .12);
+	--mv-elevation-3: 0 5px 16px rgba(58, 58, 58, .09);
+
+	--mv-motion-base: 200ms;
+	--mv-ease:        ease;
+	--mv-ease-press:  cubic-bezier(.34, 1.6, .64, 1);
+	/* The seal press bottoms out; it does not spring back like rubber. */
+	--mv-ease-seal:   cubic-bezier(.25, .7, .3, 1);
+	--mv-seal-time:   .28s;
+
+	--mv-focus-ring:   2px solid currentColor;
+	--mv-focus-offset: 3px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0; padding: 0 1.25rem 6rem;
+	background: #fff; color: var(--mv-color-text);
+	font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+	-webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 70rem; margin: 0 auto; }
+header.page { padding: 3.25rem 0 2rem; border-bottom: 1px solid var(--mv-color-border); margin-bottom: 2rem; }
+h1 { margin: 0 0 .4rem; font-size: clamp(1.9rem, 4vw, 2.6rem); line-height: 1.15; letter-spacing: -.015em; }
+h1 em { font-style: normal; color: var(--mv-color-primary); }
+.lede { margin: 0; max-width: 48rem; font-size: 1.05rem; color: var(--mv-color-subtle); }
+h2 { margin: 3.25rem 0 .3rem; font-size: 1.4rem; letter-spacing: -.01em; }
+h2::after { content: ""; display: block; width: 2.2em; height: 3px; margin-top: .45rem; border-radius: 2px; background: var(--mv-color-primary); }
+h3.sub { margin: 2rem 0 .55rem; font-size: .82rem; color: var(--mv-color-subtle); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.note { margin: .8rem 0 1.6rem; max-width: 52rem; color: var(--mv-color-subtle); font-size: .93rem; }
+.note strong { color: var(--mv-color-text); }
+
+/* ── The state control ────────────────────────────────────────────────────────
+ * You cannot see :active by looking at a page, and a press that lasts 280ms is
+ * the state this whole review is about. So each rule below is written twice:
+ * once against the real pseudo-class, once against a body:has() twin. No
+ * script — :has() on a checked radio does it.
+ * -------------------------------------------------------------------------- */
+
+.controls {
+	position: sticky; top: 0; z-index: 20;
+	display: flex; flex-wrap: wrap; align-items: center; gap: 1.1rem;
+	margin: 0 -1.25rem 2rem; padding: .8rem 1.25rem;
+	background: rgba(255,255,255,.94); backdrop-filter: blur(8px);
+	border-bottom: 1px solid var(--mv-color-border); font-size: .88rem;
+}
+.controls label { cursor: pointer; user-select: none; }
+.controls .hint { color: var(--mv-color-subtle); font-size: .82rem; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE SEAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * Three recoils, one shape. The die comes down, bottoms out at 45%, the paper
+ * answers weakly at 70%, and it holds. Only the angle differs, and it differs
+ * because the element's width differs.
+ */
+@keyframes mv-sceau {
+	0%   { transform: rotate(-1deg)    scale(1);     }
+	45%  { transform: rotate(0.35deg)  scale(0.965); }
+	70%  { transform: rotate(0.2deg)   scale(1.005); }
+	100% { transform: rotate(0.3deg)   scale(0.99);  }
+}
+@keyframes mv-sceau-doux {
+	0%   { transform: rotate(-0.6deg)  scale(1);     }
+	45%  { transform: rotate(0.22deg)  scale(0.975); }
+	70%  { transform: rotate(0.12deg)  scale(1.004); }
+	100% { transform: rotate(0.2deg)   scale(0.993); }
+}
+/* Full-width rows: the press is real, the rotation would read as breakage. */
+@keyframes mv-sceau-plat {
+	0%   { transform: translateY(-2px) scale(1);     }
+	45%  { transform: translateY(0)    scale(0.982); }
+	70%  { transform: translateY(0)    scale(1.003); }
+	100% { transform: translateY(0)    scale(0.995); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANELS — 8px, real paddings and backgrounds from mv-home.css
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.panel-section {
+	padding: 40px clamp(20px, 4vw, 48px);
+	border-radius: var(--mv-panel-radius);
+	background: var(--mv-color-bg-cream);
+}
+.panel-section--tint { background: var(--mv-color-bg-blue-tint); }
+.panel-section--white { background: #fff; box-shadow: var(--mv-elevation-1); }
+
+.panel-cta {
+	display: flex; flex-direction: column; gap: 16px; align-items: center; text-align: center;
+	padding: 32px;
+	border-radius: var(--mv-panel-radius);
+	background: var(--mv-color-bg-blue-tint);
+}
+
+.panel-orientation {
+	margin-top: 24px; padding: 20px;
+	border-radius: var(--mv-panel-radius);
+	background: var(--mv-color-bg-soft);
+}
+
+.panel-header { max-width: 760px; margin: 0 0 24px; }
+.panel-header h4 { margin: 0 0 .3rem; font-size: 1.3rem; font-weight: 400; letter-spacing: .01em; }
+.panel-header p { margin: 0; color: var(--mv-color-subtle); font-size: .95rem; }
+
+/*
+ * Panels are surfaces, not affordances. They get no seal, no motion and no
+ * relief — if the frame moved with the thing inside it, neither would read.
+ */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mv-button {
+	/* Light text on a dark fill: a raised letter casts a shadow, it does not
+	   catch light. The two secondary palettes below flip this. */
+	--seal-glint: rgba(0, 0, 0, .45);
+
+	display: inline-block; padding: 10px 20px;
+	border: 2px solid transparent; border-radius: var(--mv-tile-radius);
+	background-color: var(--mv-color-primary); color: #fff;
+	font: inherit; font-weight: 600; line-height: 1.2;
+	text-decoration: none; cursor: pointer;
+
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 20%, transparent);
+	text-shadow: 0 1px 0 var(--seal-glint);
+	transition: transform var(--mv-motion-base) var(--mv-ease-press),
+	            box-shadow var(--mv-motion-base) var(--mv-ease),
+	            text-shadow 150ms var(--mv-ease);
+}
+
+.mv-button--secondary {
+	--seal-glint: rgba(255, 255, 255, .95);
+	background-color: transparent;
+	border-color: var(--mv-color-warm);
+	color: var(--mv-color-warm-dark);
+}
+
+.mv-button--tertiary {
+	--seal-glint: rgba(255, 255, 255, .95);
+	background-color: var(--mv-color-bg-cream);
+	color: var(--mv-color-warm-dark);
+}
+
+.mv-button:hover,
+body:has(#s-hover:checked) .mv-button {
+	transform: rotate(-1deg);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+	            0 6px 16px rgba(58, 58, 58, .13);
+}
+
+.mv-button:active { animation: mv-sceau var(--mv-seal-time) var(--mv-ease-seal) both; }
+
+/*
+ * The sunken face. Dark at the top rim, a thin light line at the bottom, and
+ * the text highlight moved above the glyphs — the three things that, together,
+ * are what a deboss is.
+ */
+.mv-button:active,
+body:has(#s-active:checked) .mv-button {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+	            inset 0 3px 5px rgba(0, 0, 0, .3),
+	            inset 0 -2px 0 rgba(255, 255, 255, .35);
+	text-shadow: 0 -1px 0 var(--seal-glint);
+}
+/* The frozen twin cannot run a keyframe; it shows the frame it ends on. */
+body:has(#s-active:checked) .mv-button { transform: rotate(.3deg) scale(.99); }
+
+/* Full width: mv-home.css stretches these two, and at 1.2deg a 600px button's
+   corners travel about six pixels. They press flat instead. */
+.mv-button--full { display: block; width: 100%; text-align: center; }
+.mv-button--full:hover,
+body:has(#s-hover:checked) .mv-button--full { transform: translateY(-2px); }
+.mv-button--full:active { animation-name: mv-sceau-plat; }
+body:has(#s-active:checked) .mv-button--full { transform: translateY(0) scale(.995); }
+
+.mv-button:focus-visible {
+	outline: var(--mv-focus-ring);
+	outline-offset: var(--mv-focus-offset);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TILES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.mv-tile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: var(--mv-tile-gap); }
+.mv-tile-grid--4 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); }
+
+.mv-tile {
+	--seal-glint: rgba(255, 255, 255, .95);   /* dark text on a white card */
+
+	display: block; position: relative; min-width: 0;
+	background: var(--mv-color-surface); border: 0;
+	border-radius: var(--mv-tile-radius);
+	box-shadow: var(--mv-elevation-1);
+	color: var(--mv-color-text); text-decoration: none;
+	transition: transform var(--mv-motion-base) var(--mv-ease-press),
+	            box-shadow var(--mv-motion-base) var(--mv-ease),
+	            filter var(--mv-motion-base) var(--mv-ease);
+}
+
+.mv-tile--media { padding: 0; overflow: hidden; }
+
+.mv-tile:hover,
+body:has(#s-hover:checked) .mv-tile {
+	transform: rotate(-0.6deg);
+	box-shadow: var(--mv-elevation-2);
+}
+
+.mv-tile:active { animation: mv-sceau-doux var(--mv-seal-time) var(--mv-ease-seal) both; }
+
+.mv-tile:active,
+body:has(#s-active:checked) .mv-tile {
+	box-shadow: var(--mv-elevation-3),
+	            inset 0 3px 5px rgba(0, 0, 0, .14),
+	            inset 0 -2px 0 rgba(255, 255, 255, .9);
+}
+body:has(#s-active:checked) .mv-tile { transform: rotate(.2deg) scale(.993); }
+
+/*
+ * The relief has to reach the photograph, and an inset shadow on .mv-tile
+ * cannot: an inset paints above the element's own background but below its
+ * children, and the media is a child that covers the whole top of the card.
+ * Putting it on .mv-tile__img instead works, because there the photo IS the
+ * background and the inset lands on top of it.
+ */
+.mv-tile:active .mv-tile__img,
+body:has(#s-active:checked) .mv-tile .mv-tile__img {
+	box-shadow: inset 0 4px 9px rgba(0, 0, 0, .34);
+}
+
+.mv-tile__media { display: block; position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--mv-color-bg-soft); }
+.mv-tile__img { display: block; width: 100%; height: 100%; background-size: cover; background-position: center; transition: box-shadow var(--mv-motion-base) var(--mv-ease); }
+.mv-tile__body { display: block; padding: var(--mv-tile-pad); }
+.mv-tile__title { display: block; margin: 0 0 .35rem; font-size: 1.05rem; font-weight: 600; line-height: 1.25; text-shadow: 0 1px 0 var(--seal-glint); transition: text-shadow 150ms var(--mv-ease); }
+.mv-tile:active .mv-tile__title,
+body:has(#s-active:checked) .mv-tile .mv-tile__title { text-shadow: 0 -1px 0 var(--seal-glint); }
+.mv-tile__link { color: var(--mv-color-primary); text-decoration: none; }
+.mv-tile__link::after { content: ""; position: absolute; inset: 0; }
+.mv-tile__description { display: block; font-size: .92rem; line-height: 1.5; }
+.mv-tile__link:focus-visible { outline: var(--mv-focus-ring); outline-offset: var(--mv-focus-offset); }
+
+/* ── Compact and overlay: small boxes, so the full angle ──────────────────── */
+
+.mv-tile--compact { border-radius: var(--mv-tile-radius-sm); }
+.mv-tile--compact .mv-tile__body { padding: .8rem .9rem; }
+.mv-tile--compact .mv-tile__title { font-size: .92rem; margin-bottom: .2rem; }
+.mv-tile--compact .mv-tile__description { font-size: .84rem; }
+
+.mv-tile--overlay { --seal-glint: rgba(0, 0, 0, .5); }
+.mv-tile--overlay .mv-tile__media { aspect-ratio: 3 / 4; }
+.mv-tile--overlay .mv-tile__body { position: absolute; inset: auto 0 0; padding: 1rem; }
+.mv-tile--overlay .mv-tile__media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 35%, rgba(0,0,0,.65)); }
+.mv-tile--overlay .mv-tile__link { color: #fff; }
+.mv-tile--overlay .mv-tile__description { color: rgba(255,255,255,.88); }
+
+.mv-tile--compact:hover, .mv-tile--overlay:hover,
+body:has(#s-hover:checked) .mv-tile--compact,
+body:has(#s-hover:checked) .mv-tile--overlay { transform: rotate(-1.2deg); }
+
+.mv-tile--compact:active,
+.mv-tile--overlay:active { animation-name: mv-sceau; }
+body:has(#s-active:checked) .mv-tile--compact,
+body:has(#s-active:checked) .mv-tile--overlay { transform: rotate(.3deg) scale(.99); }
+
+/* ── Result rows: full width, so no rotation at all ───────────────────────── */
+
+.mv-tile--result { display: grid; grid-template-columns: minmax(120px, 180px) minmax(0, 1fr); gap: 1rem; padding: .85rem; align-items: center; overflow: hidden; }
+.mv-tile--result .mv-tile__media { border-radius: var(--mv-tile-radius-sm); aspect-ratio: 4 / 3; }
+.mv-tile--result .mv-tile__body { padding: 0; }
+.mv-tile--result:hover,
+body:has(#s-hover:checked) .mv-tile--result { transform: translateY(-2px); }
+.mv-tile--result:active { animation-name: mv-sceau-plat; }
+body:has(#s-active:checked) .mv-tile--result { transform: translateY(0) scale(.995); }
+
+/* ── Utility: a container, and containers do not get pressed ──────────────── */
+
+.mv-tile--utility { padding: var(--mv-tile-pad) 1.15rem; }
+.mv-tile--utility h4 { margin: 0 0 .4rem; font-size: .92rem; }
+.mv-tile--utility p, .mv-tile--utility li { margin: 0; font-size: .92rem; color: var(--mv-color-subtle); }
+.mv-tile--utility ul { margin: .3rem 0 0; padding-left: 1.1rem; }
+
+.mv-tile--utility,
+.mv-tile--utility:hover, .mv-tile--utility:active,
+body:has(#s-hover:checked) .mv-tile--utility,
+body:has(#s-active:checked) .mv-tile--utility {
+	transform: none;
+	animation: none;
+	box-shadow: var(--mv-elevation-1);
+	filter: none;
+}
+.mv-tile--utility .mv-tile__title,
+.mv-tile--utility h4 { text-shadow: none; }
+
+.box-recent { margin-top: 1.6em; padding: .9em 1.1em; border-radius: var(--mv-tile-radius-sm); background: var(--mv-color-bg-cream); }
+.box-recent h4 { margin: 0 0 .4rem; font-size: .92rem; }
+.box-recent ul { margin: 0; padding-left: 1.1rem; font-size: .9rem; }
+.box-recent a { color: var(--mv-color-primary); }
+
+/* ── Photographs ──────────────────────────────────────────────────────────── */
+
+.img-a { background-image: url("img/photo-1.jpg"); }
+.img-b { background-image: url("img/photo-2.jpg"); }
+.img-c { background-image: url("img/photo-3.jpg"); }
+.img-d { background-image: url("img/photo-4.jpg"); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   THE LITERAL READING — if the seal took the colour too
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/*
+ * Gallery 21 verbatim: cream fill, warm-brown text, warm relief. Shown so the
+ * palette question can be looked at rather than argued about. Note what it
+ * costs — the primary/secondary/tertiary hierarchy collapses, because three
+ * buttons that share a fill can only be told apart by their labels.
+ */
+.mv-button--literal {
+	--seal-glint: rgba(255, 255, 255, .95);
+	background-color: var(--mv-color-bg-cream);
+	color: var(--mv-color-warm-dark);
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-color-warm) 32%, transparent);
+}
+.mv-button--literal:hover,
+body:has(#s-hover:checked) .mv-button--literal {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-color-warm) 60%, transparent),
+	            0 6px 16px rgba(58, 58, 58, .1);
+}
+.mv-button--literal:active,
+body:has(#s-active:checked) .mv-button--literal {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--mv-color-warm) 60%, transparent),
+	            inset 0 3px 5px rgba(92, 61, 46, .3),
+	            inset 0 -2px 0 rgba(255, 255, 255, .9);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PAGE FURNITURE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; }
+.ground { padding: 28px; border-radius: var(--mv-panel-radius); margin-bottom: 1rem; }
+.ground--cream { background: var(--mv-color-bg-cream); }
+.ground--tint  { background: var(--mv-color-bg-blue-tint); }
+.ground--white { background: #fff; box-shadow: var(--mv-elevation-1); }
+/* Neutral, not a guess at the real footer: the question here is whether the
+   relief survives on a dark ground, not what colour that ground happens to be.
+   Tinting it near the primary made the blue button look broken for a reason
+   that had nothing to do with the seal. */
+.ground--dark  { background: #2f3640; }
+.ground--dark .ground-label { color: rgba(255,255,255,.75); }
+.ground-label { display: block; margin-bottom: .8rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--mv-color-subtle); }
+
+.flags { display: flex; flex-wrap: wrap; gap: .3rem; margin: .7rem 0 0; padding: 0; list-style: none; }
+.flags li { padding: .15rem .5rem; border-radius: 999px; font-size: .68rem; background: var(--mv-color-bg-cream); color: var(--mv-color-warm-dark); }
+.flags li.ok { background: var(--mv-color-bg-blue-tint); color: var(--mv-color-primary-deep); }
+.flags li.warn { background: #fdf0f7; color: var(--mv-color-highlight); }
+
+/* Wide content scrolls inside its own box; the page body never scrolls sideways. */
+.contract-wrap { overflow-x: auto; margin: 1rem 0 0; }
+.contract { width: 100%; min-width: 34rem; border-collapse: collapse; font-size: .9rem; }
+.contract th, .contract td { padding: .5rem .7rem; text-align: left; border-bottom: 1px solid var(--mv-color-border); }
+.contract th { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--mv-color-subtle); }
+.contract td code { font: .85em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: var(--mv-color-bg-cream); padding: .1em .35em; border-radius: 3px; }
+.contract tr.inert td { color: var(--mv-color-subtle); }
+
+@media (prefers-reduced-motion: reduce) {
+	/*
+	 * Every recoil here is an animation, so a blanket `transform: none` is not
+	 * enough — it would leave the keyframes running underneath it. Relief,
+	 * shadow and the text flip all stay: none of those is motion.
+	 */
+	.mv-tile, .mv-button, .mv-tile__img {
+		transition: box-shadow var(--mv-motion-base) var(--mv-ease),
+		            text-shadow 150ms var(--mv-ease);
+	}
+	.mv-tile:hover, .mv-tile:active,
+	.mv-button:hover, .mv-button:active,
+	body:has(#s-hover:checked) .mv-tile, body:has(#s-active:checked) .mv-tile,
+	body:has(#s-hover:checked) .mv-button, body:has(#s-active:checked) .mv-button {
+		transform: none;
+		animation: none;
+	}
+}

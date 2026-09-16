@@ -178,6 +178,37 @@
 	}
 }
 
+/* ----- Link on to /pour-vous/ --------------------------------------------- */
+
+/*
+ * Offered only when the server found enough rows to fill that page, so it is
+ * a promise the destination keeps. Styled as a link and not a button: the
+ * block is editorial, and a button here would read as an advert for the
+ * site's own suggestions.
+ */
+.mfy__more {
+	margin: 1.25em 0 0;
+	font-size: 0.9em;
+	line-height: 1.4;
+}
+
+.mfy__more-link {
+	color: var(--mv-color-primary, #4e74a5);
+	font-weight: 600;
+	text-decoration: none;
+	border-bottom: 1px solid rgba(78, 116, 165, 0.35);
+}
+
+.mfy__more-link::after {
+	content: " \2192";
+}
+
+.mfy__more-link:hover,
+.mfy__more-link:focus-visible {
+	color: var(--mv-color-highlight, #a92d87);
+	border-bottom-color: currentColor;
+}
+
 /* ----- Reset control ------------------------------------------------------ */
 
 /*
@@ -273,21 +304,34 @@
 }
 
 /*
- * Prose links: colour only.
+ * Prose links: styled by the theme, not here.
  *
- * The site styles no :visited state at all, so this is the only read-signal a
- * reader gets inside an article — deliberately quiet, and reversible in one
- * line if it turns out to be too much.
+ * They used to be styled here — grey, with text-decoration-color set — and
+ * that stopped being right in two ways at once when the theme's LINKS block
+ * shipped.
+ *
+ * First, the claim the old comment rested on ("the site styles no :visited
+ * state at all") is no longer true: prose links now go warm brown when
+ * visited, and a read link painting itself grey said the same thing in a
+ * second, unrelated voice.
+ *
+ * Second, and worse, the theme's prose rule is scoped `a:not([class])` — which
+ * is literal. Adding .mfy-read-link gives the link a class attribute, so the
+ * rule stopped matching the moment this script ran, and a read link lost the
+ * hairline underline and fell back to the browser's default one: different
+ * thickness, different offset, in the middle of a paragraph of links that all
+ * still had the hairline.
+ *
+ * Both are fixed in mv-custom.css, where the whole of a prose link's
+ * appearance now lives in one block in cascade order — :link, :visited, read,
+ * :hover, :active — so the next person to change the visited colour cannot
+ * miss the read rule that has to change with it. Read links there carry the
+ * visited colour plus a struck relief, which is the part :visited can never
+ * have: it honours colour-family properties only and discards alpha.
+ *
+ * The tile treatment above stays here. The plugin styles what the plugin
+ * renders; the theme styles prose.
  */
-.entry-content a.mfy-read-link {
-	color: var(--mv-color-subtle, #757575);
-	text-decoration-color: currentColor;
-}
-
-.entry-content a.mfy-read-link:hover,
-.entry-content a.mfy-read-link:focus-visible {
-	color: var(--mv-color-primary, #4e74a5);
-}
 
 /* ----- Administrator debug ------------------------------------------------ */
 

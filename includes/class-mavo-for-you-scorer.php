@@ -30,7 +30,7 @@ class MFY_Scorer {
 	 * @param array|null $referral Validated referral, or null.
 	 * @param array      $options  'limit' — slots to fill, default num_recommendations().
 	 *                             'geo_levels' — narrow the geography to these levels.
-	 * @return array{recommendations: array, debug: array}
+	 * @return array{recommendations: array, debug: array, profile: array}
 	 */
 	public static function rank( int $current_post_id, string $lang, array $views, array $searches, ?array $referral, array $options = [] ): array {
 		$debug = [
@@ -45,25 +45,26 @@ class MFY_Scorer {
 			'excluded'        => [],
 		];
 
-		$ordered  = self::order_views( $current_post_id, $views );
-		$weighted = self::weigh_views( $ordered );
+		$profile  = self::session_profile( $current_post_id, $lang, $views, $searches, $referral, $options );
+		$ordered  = $profile['ordered'];
+		$weighted = $profile['weighted'];
 
-		[ $interest, $view_debug ] = self::build_interest_profile( $weighted, $lang );
-		$debug['profile_views']    = $view_debug;
-		$debug['profile_filters']  = $interest;
+		$interest                 = $profile['interest'];
+		$debug['profile_views']   = $profile['interest_debug'];
+		$debug['profile_filters'] = $interest;
 
-		$search_filters         = self::search_filters( $searches, $referral, $lang );
+		$search_filters          = $profile['search_filters'];
 		$debug['search_filters'] = $search_filters;
 
-		$geo           = MFY_Geo::session_profile( $weighted, $lang, $options['geo_levels'] ?? null );
-		$debug['geo']  = self::describe_geo( $geo );
+		$geo          = $profile['geo'];
+		$debug['geo'] = self::describe_geo( $geo );
 
 		$exclude = array_merge( [ $current_post_id ], array_column( $ordered, 'post_id' ) );
 
 		// Hubs are gathered before the pool and placed before the ranking:
 		// they are an editorial statement about what owns this content, not a
 		// similarity score to be compared with one.
-		$hub_context   = MFY_Hubs::session_context( $weighted, $lang );
+		$hub_context   = $profile['hub_context'];
 		$hubs          = MFY_Hubs::session_hubs( $weighted, $lang, $exclude );
 		$debug['hubs'] = self::describe_hubs( $hubs, $lang );
 
@@ -75,7 +76,7 @@ class MFY_Scorer {
 		$candidates   = self::build_pool( $lang, $interest, $search_filters, $geo, $hub_children, $exclude, $debug );
 
 		if ( ! $candidates && ! $hubs ) {
-			return [ 'recommendations' => [], 'debug' => $debug ];
+			return [ 'recommendations' => [], 'debug' => $debug, 'profile' => $profile ];
 		}
 
 		$candidate_ids  = array_column( $candidates, 'post_id' );
@@ -159,7 +160,40 @@ class MFY_Scorer {
 
 		usort( $debug['candidates'], static fn( $a, $b ) => $b['score'] <=> $a['score'] );
 
-		return [ 'recommendations' => $recommendations, 'debug' => $debug ];
+		return [ 'recommendations' => $recommendations, 'debug' => $debug, 'profile' => $profile ];
+	}
+
+	/**
+	 * Everything a session says about itself, before anything is ranked.
+	 *
+	 * rank() needs this to score three cards; the /pour-vous/ page needs the
+	 * very same figures to build a row per signal instead of merging them all
+	 * into one ordering. Computing it here rather than twice is what keeps the
+	 * two surfaces honest: a session that is 70% London on the block is 70%
+	 * London on the page, because it is literally the same number.
+	 *
+	 * @param array $options See rank().
+	 * @return array{
+	 *     ordered: array, weighted: array, interest: array<string,float>,
+	 *     interest_debug: array, search_filters: array<string,float>,
+	 *     geo: array, hub_context: array
+	 * }
+	 */
+	public static function session_profile( int $current_post_id, string $lang, array $views, array $searches, ?array $referral, array $options = [] ): array {
+		$ordered  = self::order_views( $current_post_id, $views );
+		$weighted = self::weigh_views( $ordered );
+
+		[ $interest, $interest_debug ] = self::build_interest_profile( $weighted, $lang );
+
+		return [
+			'ordered'        => $ordered,
+			'weighted'       => $weighted,
+			'interest'       => $interest,
+			'interest_debug' => $interest_debug,
+			'search_filters' => self::search_filters( $searches, $referral, $lang ),
+			'geo'            => MFY_Geo::session_profile( $weighted, $lang, $options['geo_levels'] ?? null ),
+			'hub_context'    => MFY_Hubs::session_context( $weighted, $lang ),
+		];
 	}
 
 	/**
@@ -349,27 +383,49 @@ class MFY_Scorer {
 			$queries[] = [ $referral['query'], MFY_Config::referral_search_factor() ];
 		}
 
-		$signal_slugs = array_flip( MFY_Data::signal_slugs() );
-
 		foreach ( $queries as [ $query, $weight ] ) {
-			$normalized = self::normalize_query( $query );
-			if ( '' === $normalized ) {
-				continue;
-			}
-
-			foreach ( $map as $token => $slug ) {
-				if ( ! isset( $signal_slugs[ $slug ] ) ) {
-					continue;
-				}
-				// Prefix-at-word-boundary, so "rando" catches "randonnée" but
-				// not "durando".
-				if ( preg_match( '/\b' . preg_quote( self::normalize_query( $token ), '/' ) . '/u', $normalized ) ) {
-					$out[ $slug ] = max( $out[ $slug ] ?? 0.0, (float) $weight );
-				}
+			foreach ( self::query_filters( $query, $lang, $map ) as $slug ) {
+				$out[ $slug ] = max( $out[ $slug ] ?? 0.0, (float) $weight );
 			}
 		}
 
 		return $out;
+	}
+
+	/**
+	 * The filter slugs one search string maps to.
+	 *
+	 * Split out of search_filters() because the /pour-vous/ page needs the
+	 * mapping per query rather than merged: a row headed "parce que vous avez
+	 * cherché « londres ado »" has to know which slugs *that* query produced,
+	 * not which slugs the session's searches produced between them.
+	 *
+	 * @param array|null $map Pre-fetched dictionary, or null to look it up.
+	 * @return string[]
+	 */
+	public static function query_filters( string $query, string $lang, ?array $map = null ): array {
+		$normalized = self::normalize_query( $query );
+
+		if ( '' === $normalized ) {
+			return [];
+		}
+
+		$map          = null === $map ? MFY_Config::search_filter_map( $lang ) : $map;
+		$signal_slugs = array_flip( MFY_Data::signal_slugs() );
+		$out          = [];
+
+		foreach ( $map as $token => $slug ) {
+			if ( ! isset( $signal_slugs[ $slug ] ) || isset( $out[ $slug ] ) ) {
+				continue;
+			}
+			// Prefix-at-word-boundary, so "rando" catches "randonnée" but
+			// not "durando".
+			if ( preg_match( '/\b' . preg_quote( self::normalize_query( $token ), '/' ) . '/u', $normalized ) ) {
+				$out[ $slug ] = true;
+			}
+		}
+
+		return array_keys( $out );
 	}
 
 	/** Lowercased, accent-folded, whitespace-collapsed. */

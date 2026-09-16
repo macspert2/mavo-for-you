@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le tout assemblé — panneaux, tuiles, boutons</title>
+<link rel="stylesheet" href="panel-styles.css">
+</head>
+<body>
+
+<div class="controls">
+	<strong>État&nbsp;:</strong>
+	<label><input type="radio" name="st" id="s-rest" checked> repos</label>
+	<label><input type="radio" name="st" id="s-hover"> survol</label>
+	<label><input type="radio" name="st" id="s-active"> pressé</label>
+	<span class="hint">— freezes every component on the page at once. A press lasts 280ms; this is the only way to look at it.</span>
+</div>
+
+<div class="wrap">
+
+<header class="page">
+	<h1>Le tout assemblé — <em>panneaux, tuiles et boutons sous un seul sceau</em></h1>
+	<p class="lede">
+		The radius question is settled and shipped: panels 8px, tiles 4px, buttons 4px. What is not
+		settled is whether <strong>one motion language reads as coherent when every component on a
+		page wears it at once</strong> — which is a question you can only answer by looking at a
+		whole page, not a gallery of cards. Every padding, gap, background and shadow below is
+		taken from <code>mv-home.css</code> and <code>mv-tiles.css</code> unchanged.
+	</p>
+</header>
+
+<h2>La décision que ce fichier prend à votre place</h2>
+<p class="note">
+	Sceau frappé, as drawn in the gallery, is <strong>a cream button with warm-brown text</strong>.
+	Taken literally, putting it on every button repaints the site cream — a palette decision, not a
+	motion one, and a far larger thing than it sounds. So the seal is rebuilt here
+	<strong>palette-independently</strong>: every component keeps the colours it has today and takes
+	the seal's relief and its recoil. That is the same contract <code>.mv-stamp</code> already made
+	— motion only, no colours — and the reason it survived a dozen foreground/background
+	combinations. The literal reading is at the bottom of this page, so the two can be compared
+	rather than argued about.
+</p>
+<p class="note">
+	One value cannot be derived and so is named twice: <code>--seal-glint</code>. Whether a raised
+	letter <em>catches</em> light or <em>casts</em> shadow depends on whether it is lighter or
+	darker than the surface under it, and CSS has no way to ask — <code>color-mix</code> cannot
+	branch, and <code>light-dark()</code> answers a different question. Dark for light-on-dark,
+	white for dark-on-light. It is the only place a colour is named.
+</p>
+
+<div class="contract-wrap">
+<table class="contract">
+	<thead><tr><th>Composant</th><th>Survol</th><th>Pressé</th><th>Pourquoi</th></tr></thead>
+	<tbody>
+		<tr><td>Boutons</td><td><code>rotate(-1°)</code></td><td>recul + enfoncement</td><td>the reference press</td></tr>
+		<tr><td>Boutons pleine largeur</td><td><code>translateY(-2px)</code></td><td>recul à plat</td><td>at 1.2° a 600px corner travels ~6px</td></tr>
+		<tr><td>Tuiles compactes, overlay</td><td><code>rotate(-1.2°)</code></td><td>recul plein</td><td>small boxes, little body text</td></tr>
+		<tr><td>Tuiles média, texte</td><td><code>rotate(-0.6°)</code></td><td>recul doux</td><td>a paragraph of rotated text does not</td></tr>
+		<tr><td>Lignes de résultat</td><td><code>translateY(-2px)</code></td><td>recul à plat</td><td>full width</td></tr>
+		<tr class="inert"><td>Tuile utilitaire</td><td>—</td><td>—</td><td>a container, not an affordance</td></tr>
+		<tr class="inert"><td>Panneaux</td><td>—</td><td>—</td><td>if the frame moved too, neither would read</td></tr>
+	</tbody>
+</table>
+</div>
+
+<h2>Les trois panneaux réels, remplis</h2>
+<p class="note">
+	This is the page as it would ship. Switch the control to <strong>pressé</strong> and read the
+	whole thing at once — the question is not whether any one component looks right, it is whether
+	twelve of them pressing in the same idiom looks like a system or like a twitch.
+</p>
+
+<h3 class="sub">.mv-section .mv-container — padding 40px, fond crème</h3>
+<div class="panel-section">
+	<div class="panel-header">
+		<h4>Nos dernières aventures</h4>
+		<p>Ce que nous avons publié ces dernières semaines.</p>
+	</div>
+	<div class="mv-tile-grid">
+		<div class="mv-tile mv-tile--media">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Londres avec des ados</a></span>
+				<span class="mv-tile__description">Trois jours, et on y retournerait.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Une semaine en Algarve</a></span>
+				<span class="mv-tile__description">Falaises, plages, étapes courtes.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Bénodet en famille</a></span>
+				<span class="mv-tile__description">La Bretagne sans la pluie, pour une fois.</span>
+			</span>
+		</div>
+	</div>
+	<p style="margin:24px 0 0"><a href="#" class="mv-button">Voir tous les articles</a></p>
+</div>
+
+<h3 class="sub">.mv-start-here-cta__inner — padding 32px, fond bleu pâle</h3>
+<div class="panel-cta">
+	<h4 style="margin:0;font-size:1.3rem;font-weight:400">Première visite&nbsp;?</h4>
+	<p style="margin:0;max-width:40rem;color:var(--mv-color-subtle)">Commencez par nos itinéraires testés en famille, du week-end à Londres au tour du monde.</p>
+	<p style="margin:0" class="row">
+		<a href="#" class="mv-button">Par où commencer</a>
+		<a href="#" class="mv-button mv-button--secondary">Toutes nos destinations</a>
+	</p>
+</div>
+
+<h3 class="sub">.mv-search-header__orientation — padding 20px, fond sable</h3>
+<div class="panel-orientation">
+	<h4 style="margin:0 0 .7rem;font-size:1rem">Vous cherchiez peut-être</h4>
+	<div class="mv-tile-grid mv-tile-grid--4">
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Angleterre</a></span>
+				<span class="mv-tile__description">42 articles.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Bretagne</a></span>
+				<span class="mv-tile__description">18 articles.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Andalousie</a></span>
+				<span class="mv-tile__description">23 articles.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Algarve</a></span>
+				<span class="mv-tile__description">11 articles.</span>
+			</span>
+		</div>
+	</div>
+	<ul class="flags"><li class="warn">the tight panel — 20px between its corner and the tiles'</li><li class="ok">compact, so the full 1.2°</li></ul>
+</div>
+
+<h2>Les boutons, sur chaque fond du site</h2>
+<p class="note">
+	The relief is built from <code>currentColor</code> for the rim and plain black and white for the
+	shadow and the bottom light, so it needs to be checked on every ground the site actually uses —
+	including the dark one, where a white bottom line is doing most of the work.
+</p>
+
+<div class="ground ground--cream">
+	<span class="ground-label">fond crème — .mv-section--bg-cream</span>
+	<div class="row">
+		<a href="#" class="mv-button">Lire le guide</a>
+		<a href="#" class="mv-button mv-button--secondary">Toutes les destinations</a>
+		<a href="#" class="mv-button mv-button--tertiary">Plus tard</a>
+	</div>
+</div>
+
+<div class="ground ground--white">
+	<span class="ground-label">fond blanc — corps d'article</span>
+	<div class="row">
+		<a href="#" class="mv-button">Lire le guide</a>
+		<a href="#" class="mv-button mv-button--secondary">Toutes les destinations</a>
+		<a href="#" class="mv-button mv-button--tertiary">Plus tard</a>
+	</div>
+</div>
+
+<div class="ground ground--tint">
+	<span class="ground-label">fond bleu pâle — CTA</span>
+	<div class="row">
+		<a href="#" class="mv-button">Par où commencer</a>
+		<a href="#" class="mv-button mv-button--secondary">Toutes nos destinations</a>
+	</div>
+</div>
+
+<div class="ground ground--dark">
+	<span class="ground-label">fond sombre — neutre</span>
+	<div class="row">
+		<a href="#" class="mv-button">S'abonner</a>
+	</div>
+</div>
+
+<h3 class="sub">Pleine largeur — barre latérale, formulaire newsletter</h3>
+<div class="ground ground--cream">
+	<a href="#" class="mv-button mv-button--full">Recevoir la lettre mensuelle</a>
+	<ul class="flags"><li class="ok">no rotation — presses flat</li></ul>
+</div>
+
+<h2>Chaque variante de tuile</h2>
+
+<h3 class="sub">mv-tile--media — 0,6°, la carte qui porte un chapô</h3>
+<div class="mv-tile-grid">
+		<div class="mv-tile mv-tile--media">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Séville au printemps</a></span>
+				<span class="mv-tile__description">Orangers, patios et trop de glaces.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Kew Gardens</a></span>
+				<span class="mv-tile__description">Une matinée entière, sans se presser.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Édimbourg en août</a></span>
+				<span class="mv-tile__description">Le festival, mais aussi tout le reste.</span>
+			</span>
+		</div>
+</div>
+
+<h3 class="sub">mv-tile--overlay — 1,2°, le texte sur l'image</h3>
+<div class="mv-tile-grid mv-tile-grid--4">
+		<div class="mv-tile mv-tile--overlay">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Angleterre</a></span>
+				<span class="mv-tile__description">42 articles</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--overlay">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Portugal</a></span>
+				<span class="mv-tile__description">19 articles</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--overlay">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Bretagne</a></span>
+				<span class="mv-tile__description">18 articles</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--overlay">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Andalousie</a></span>
+				<span class="mv-tile__description">23 articles</span>
+			</span>
+		</div>
+</div>
+<ul class="flags"><li class="ok">--seal-glint flips dark here — white text on a photograph</li></ul>
+
+<h3 class="sub">mv-tile--result — pleine largeur, aucune rotation</h3>
+<div class="mv-tile-grid" style="grid-template-columns:1fr">
+	<div class="mv-tile mv-tile--result">
+		<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+		<span class="mv-tile__body">
+			<span class="mv-tile__title"><a class="mv-tile__link" href="#">Bénodet en famille — quatre jours en Bretagne sud</a></span>
+			<span class="mv-tile__description">Plages abritées, crêperies, et un port à regarder pendant des heures.</span>
+		</span>
+	</div>
+	<div class="mv-tile mv-tile--result">
+		<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+		<span class="mv-tile__body">
+			<span class="mv-tile__title"><a class="mv-tile__link" href="#">L'Algarve hors saison</a></span>
+			<span class="mv-tile__description">Novembre : falaises vides, mer trop froide, prix divisés par trois.</span>
+		</span>
+	</div>
+</div>
+
+<h3 class="sub">mv-tile--utility — le conteneur, qui ne bouge pas</h3>
+<div class="mv-tile-grid">
+	<div class="mv-tile mv-tile--utility">
+		<h4>Dans cet article</h4>
+		<ul>
+			<li>Où dormir à Londres avec des ados</li>
+			<li>Trois musées qu'ils ont aimés</li>
+			<li>Le budget, sans mauvaise surprise</li>
+		</ul>
+	</div>
+	<div class="mv-tile mv-tile--utility">
+		<h4>Pour vous</h4>
+		<p>Suggestions basées sur les articles consultés pendant votre visite.</p>
+		<div class="box-recent">
+			<h4>Consultés récemment</h4>
+			<ul><li><a href="#">Kew Gardens</a></li><li><a href="#">Édimbourg en août</a></li></ul>
+		</div>
+	</div>
+</div>
+<ul class="flags"><li class="ok">inert at every state — switch the control and watch it not move</li></ul>
+
+<h2>Le test qui compte&nbsp;: la grille serrée</h2>
+<p class="note">
+	Rotation is only a problem when there is something beside it to rotate into. Four compact tiles
+	at the real grid gap, each turning 1.2° in the same direction: the corners approach but do not
+	touch, which is the whole reason the angle is 1.2 and not 2.
+</p>
+<div class="mv-tile-grid mv-tile-grid--4" style="gap:.5rem">
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Angleterre</a></span>
+				<span class="mv-tile__description">42 articles.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Portugal</a></span>
+				<span class="mv-tile__description">19 articles.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Bretagne</a></span>
+				<span class="mv-tile__description">18 articles.</span>
+			</span>
+		</div>
+		<div class="mv-tile mv-tile--media mv-tile--compact">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Andalousie</a></span>
+				<span class="mv-tile__description">23 articles.</span>
+			</span>
+		</div>
+</div>
+
+<h2>Si le sceau prenait aussi la couleur</h2>
+<p class="note">
+	Gallery 21 verbatim — cream fill, warm-brown text, warm relief — for comparison with the row
+	further up. Note what it costs rather than how it looks: <strong>three buttons that share a fill
+	can only be told apart by their labels</strong>, so the primary/secondary/tertiary hierarchy
+	collapses and the page loses its one reliable way of saying "start here".
+</p>
+<div class="ground ground--white">
+	<span class="ground-label">le sceau littéral</span>
+	<div class="row">
+		<a href="#" class="mv-button mv-button--literal">Lire le guide</a>
+		<a href="#" class="mv-button mv-button--literal">Toutes les destinations</a>
+		<a href="#" class="mv-button mv-button--literal">Plus tard</a>
+	</div>
+	<ul class="flags"><li class="warn">no hierarchy left</li><li class="warn">warm relief clashes on the blue-tint panel</li></ul>
+</div>
+
+<h2>À vérifier avant de déployer</h2>
+<p class="note">
+	<strong>1. The rim is new.</strong> Sceau frappé has an inset rim at rest — the die's edge — and
+	today's buttons have none. It is the one change visible without touching anything, so it is the
+	one to look at hardest on the cream panel, where contrast is lowest.
+	<strong>2. The photograph takes the deboss.</strong> An inset shadow on <code>.mv-tile</code>
+	cannot reach the image, because an inset paints below the element's children; it is applied to
+	<code>.mv-tile__img</code> instead, where the photo <em>is</em> the background. Worth checking
+	on a dark photo, where a 34% black inset has little left to darken.
+	<strong>3. Reduced motion needs animation: none</strong>, not just <code>transform: none</code>
+	— every recoil here is a keyframe, and a blanket transform override leaves them running
+	underneath it. Relief, shadow and the text flip all stay: none of those is motion.
+</p>
+
+</div>
+</body>
+</html>

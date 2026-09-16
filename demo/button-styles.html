@@ -10,7 +10,7 @@
 <div class="wrap">
 
 <header class="page">
-	<h1>Styles de boutons — <em>dix idées et un jeu complet</em></h1>
+	<h1>Styles de boutons — <em>vingt-six idées et un jeu complet</em></h1>
 	<p class="lede">
 		Each card shows a live button and, beneath it, the five states frozen side by side —
 		rest, hover, active, focus, disabled — because you cannot fake <code>:hover</code> in
@@ -22,7 +22,9 @@
 		<code>input[type="submit"]</code> cannot have <code>::before</code> or
 		<code>::after</code>. Several of this site's buttons are inputs — the comment submit,
 		the search submits — so anything built on a pseudo-element is unusable there, however
-		nice it looks. Every card says which markup it needs. Eight of the ten work anywhere.
+		nice it looks. Every card says which markup it needs. Twenty-three of the twenty-six work
+		anywhere — including every one of the second and third series, both written to that rule
+		deliberately.
 	</div>
 </header>
 
@@ -31,6 +33,14 @@
 	Nothing here reflows on interaction: movement comes from <code>transform</code>, depth from
 	<code>box-shadow</code>, and borders are declared at rest even when transparent, so a button
 	that gains one on hover does not shove its neighbours sideways.
+</p>
+<p class="section-note">
+	<strong>Every button on this page now wears the shipped 4px ticket corner.</strong> The gallery
+	used to run on pills, which flattered some of these styles and quietly misrepresented all of
+	them — the site settled on 4px months ago, so a pill here was judging options in a shape none
+	of them would ever be built in. It matters more than it sounds: a stamp on a pill reads as a
+	badge, and a stamp on a near-square reads as a stamp. Dentelé and the two scalloped seals keep
+	their own 2px, because a cut edge wants square shoulders for the holes to sit against.
 </p>
 
 <div class="gallery">
@@ -201,6 +211,242 @@
 				<figure><span class="btn b-billet-calme is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
 		</div>
 		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="warn">background-dependent</li></ul>
+	</div>
+</div>
+
+<h2>Deuxième série — <em>l'acte de tamponner</em></h2>
+<p class="section-note">
+	The first gallery asked what a button could look like. This one asks a narrower question:
+	what actually <em>happens</em> when a passport or a ticket is stamped, and which part of that
+	is worth a button. The arm comes down and recoils; the impact travels through the paper; the
+	canceller is dragged across; the stamp is inked before it lands; a dry seal leaves relief and
+	no ink at all; a rocking stamp prints twice, out of register; the stamp has a perforated edge;
+	and the ink never lands evenly. Eight moments, eight variants, one each.
+</p>
+<p class="section-note">
+	<strong>All eight are input-safe.</strong> That is not luck — after the first gallery showed
+	that a pseudo-element rules a style out of the comment and search submits, this series was
+	written under the constraint from the start. Everything here is background layers,
+	<code>box-shadow</code>, <code>text-shadow</code>, <code>transform</code> and one
+	<code>@keyframes</code>, all of which an <code>&lt;input&gt;</code> supports. The single
+	caveat is Dentelé's painted holes, which have to know the colour behind them — the same
+	bargain Billet makes.
+</p>
+
+<div class="gallery">
+	<div class="card">
+		<h3>13 · Frappe</h3>
+		<p>The recoil. A keyframe, because a transition cannot overshoot.</p>
+		<div class="live"><button type="button" class="btn b-frappe">Tamponner le passeport</button></div>
+		<div class="states">
+				<figure><span class="btn b-frappe">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-frappe is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-frappe is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-frappe is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-frappe is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">@keyframes</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>14 · Onde</h3>
+		<p>The impact travels outward through the paper — and it plays on release.</p>
+		<div class="live"><button type="button" class="btn b-onde">Valider</button></div>
+		<div class="states">
+				<figure><span class="btn b-onde">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-onde is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-onde is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-onde is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-onde is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">box-shadow only</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>15 · Oblitération</h3>
+		<p>The cancellation stroke, dragged across at eight degrees off square.</p>
+		<div class="live"><button type="button" class="btn b-obliteration">Oblitérer le billet</button></div>
+		<div class="states">
+				<figure><span class="btn b-obliteration">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-obliteration is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-obliteration is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-obliteration is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-obliteration is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>16 · Encreur</h3>
+		<p>An empty stamp at rest. Hover loads it from the pad; the click is the impression.</p>
+		<div class="live"><button type="button" class="btn b-encreur">Encrer et tamponner</button></div>
+		<div class="states">
+				<figure><span class="btn b-encreur">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-encreur is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-encreur is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-encreur is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-encreur is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>17 · Gaufrage</h3>
+		<p>The dry seal: relief and no ink at all. Sunken on press.</p>
+		<div class="live"><button type="button" class="btn b-gaufrage">Sceau officiel</button></div>
+		<div class="states">
+				<figure><span class="btn b-gaufrage">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-gaufrage is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-gaufrage is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-gaufrage is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-gaufrage is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">no colour change</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>18 · Décalage</h3>
+		<p>A double impression, out of register — and the press brings it into register.</p>
+		<div class="live"><button type="button" class="btn b-decalage">Deuxième passage</button></div>
+		<div class="states">
+				<figure><span class="btn b-decalage">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-decalage is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-decalage is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-decalage is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-decalage is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>19 · Dentelé</h3>
+		<p>The perforated edge of the stamp itself, painted on all four sides.</p>
+		<div class="live"><a href="#" class="btn b-dentele">Notre guide de Londres</a></div>
+		<div class="states">
+				<figure><span class="btn b-dentele">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-dentele is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-dentele is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-dentele is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-dentele is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="warn">background-dependent</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>20 · Encrage</h3>
+		<p>Ink never lands evenly. The only one whose idea is in the resting state.</p>
+		<div class="live"><button type="button" class="btn b-encrage">Poster la carte</button></div>
+		<div class="states">
+				<figure><span class="btn b-encrage">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-encrage is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-encrage is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-encrage is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-encrage is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+</div>
+
+<h2>Troisième série — <em>le sceau sec</em></h2>
+<p class="section-note">
+	Gaufrage was the one worth pulling on, so here it is crossed with each of the other ideas in
+	turn. What sets it apart from everything above is that it has <strong>no colour of its
+	own</strong>: a consulate seal, a notary's crimp, the blind stamp in the corner of a
+	photographic print — none of them adds ink. They deform the paper and let the light do the
+	rest, which is exactly why they read as official. You cannot photocopy relief.
+</p>
+<p class="section-note">
+	Two rules follow, and they govern all six. <strong>The light never moves</strong> — everything
+	is lit from above, so a proud face carries its highlight below the glyphs and a sunken one
+	carries it above; that flip <em>is</em> the deboss, optically, and there is no
+	<code>text-shadow: inset</code> to do it for us. And <strong>the paper has to stay
+	visible</strong>, so these sit on cream rather than white and the fill barely shifts between
+	states. A seal that changes colour on hover has stopped being a seal.
+</p>
+
+<div class="gallery">
+	<div class="card">
+		<h3>21 · Sceau frappé</h3>
+		<p>Gaufrage + Frappe. A seal press bottoms out; it does not bounce like rubber.</p>
+		<div class="live"><button type="button" class="btn b-sceau-frappe">Apposer le sceau</button></div>
+		<div class="states">
+				<figure><span class="btn b-sceau-frappe">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-sceau-frappe is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-sceau-frappe is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-sceau-frappe is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-sceau-frappe is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">no colour change</li><li class="">@keyframes</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>22 · Sceau dentelé</h3>
+		<p>Gaufrage + Dentelé. The notary's scalloped wafer — relief with a cut edge.</p>
+		<div class="live"><button type="button" class="btn b-sceau-dentele">Certifier le document</button></div>
+		<div class="states">
+				<figure><span class="btn b-sceau-dentele">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-sceau-dentele is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-sceau-dentele is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-sceau-dentele is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-sceau-dentele is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">no colour change</li><li class="warn">background-dependent</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>23 · Gaufrage encré</h3>
+		<p>Gaufrage + Encreur. The combination press: hover brings it down, the click floods the channel.</p>
+		<div class="live"><button type="button" class="btn b-gaufrage-encre">Tampon d'entrée</button></div>
+		<div class="states">
+				<figure><span class="btn b-gaufrage-encre">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-gaufrage-encre is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-gaufrage-encre is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-gaufrage-encre is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-gaufrage-encre is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>24 · Contre-gaufrage</h3>
+		<p>The relief inverted — raised at rest, flattened by the press. The only one whose click removes something.</p>
+		<div class="live"><button type="button" class="btn b-contre-gaufrage">Carte gravée</button></div>
+		<div class="states">
+				<figure><span class="btn b-contre-gaufrage">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-contre-gaufrage is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-contre-gaufrage is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-contre-gaufrage is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-contre-gaufrage is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">no colour change</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>25 · Onde sèche</h3>
+		<p>Gaufrage + Onde. A press deforms paper wider than the die, so the ring is not decoration.</p>
+		<div class="live"><button type="button" class="btn b-onde-seche">Sceller</button></div>
+		<div class="states">
+				<figure><span class="btn b-onde-seche">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-onde-seche is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-onde-seche is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-onde-seche is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-onde-seche is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="">no colour change</li></ul>
+	</div>
+
+	<div class="card">
+		<h3>26 · Sceau complet</h3>
+		<p>All of it: scallops, relief, the press recoil, and ink on the third beat.</p>
+		<div class="live"><a href="#" class="btn b-sceau-complet">Valider l'inscription</a></div>
+		<div class="states">
+				<figure><span class="btn b-sceau-complet">Aa</span><figcaption>rest</figcaption></figure>
+				<figure><span class="btn b-sceau-complet is-hover">Aa</span><figcaption>hover</figcaption></figure>
+				<figure><span class="btn b-sceau-complet is-active">Aa</span><figcaption>active</figcaption></figure>
+				<figure><span class="btn b-sceau-complet is-focus">Aa</span><figcaption>focus</figcaption></figure>
+				<figure><span class="btn b-sceau-complet is-disabled">Aa</span><figcaption>disabled</figcaption></figure>
+		</div>
+		<ul class="flags"><li class="ok">input-safe</li><li class="ok">no reflow</li><li class="warn">background-dependent</li><li class="warn">four ideas</li></ul>
 	</div>
 </div>
 

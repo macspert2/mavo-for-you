@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tuiles — comportement de bouton</title>
+<link rel="stylesheet" href="tile-styles.css">
+</head>
+<body>
+
+<div class="statebar">
+	<strong>État&nbsp;:</strong>
+	<label><input type="radio" name="state" id="s-rest" checked> repos</label>
+	<label><input type="radio" name="state" id="s-hover"> survol</label>
+	<label><input type="radio" name="state" id="s-active"> clic</label>
+	<span class="hint">— freezes every tile at once, since a grid is where the question actually lives.</span>
+	<span class="sep"></span>
+	<strong>Rayon&nbsp;:</strong>
+	<label><input type="radio" name="radius" id="r-4" checked> 4px</label>
+	<label><input type="radio" name="radius" id="r-6"> 6px</label>
+	<label><input type="radio" name="radius" id="r-8"> 8px</label>
+	<label><input type="radio" name="radius" id="r-14"> 14px actuel</label>
+</div>
+
+<div class="wrap">
+
+<header class="page">
+	<h1>Tuiles — <em>et si elles se comportaient comme des boutons&nbsp;?</em></h1>
+	<p class="lede">
+		The site's tiles currently lift 2px on hover. This page puts the button's stamp — tilt,
+		press, dashed perforation — on every real tile variant, at three strengths, and shows
+		where it stops working. The geometry mirrors <code>mv-tiles.css</code> exactly; only the
+		interaction differs.
+	</p>
+</header>
+
+<h2>Le rayon, à côté d'un vrai bouton</h2>
+<p class="note">
+	The buttons on the site settled at <strong>4px</strong>. A tile is twenty times wider, and the
+	same radius reads differently at that size — softly rounded on a 120px button, nearly square
+	on a 320px card. The control above changes only the tiles; the button below stays at 4px, so
+	the comparison is honest. My own preference is <strong>6px</strong>: close enough to read as
+	the same family, generous enough that a large card does not look like a table cell.
+</p>
+
+<div class="pair">
+	<div>
+		<h3>Tuile — rayon variable</h3>
+		<div class="mv-tile mv-tile--media t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Notre vie en Angleterre</a></span>
+				<span class="mv-tile__description">Ce que six ans de pluie nous ont appris.</span>
+			</span>
+		</div>
+	</div>
+	<div>
+		<h3>Bouton — toujours 4px</h3>
+		<p><a href="#" class="demo-button">Lire le guide de Londres</a></p>
+		<p class="note" style="margin-top:1rem">
+			Set the tiles to 4px and the two match exactly. Set them to 8px or 14px and the tile
+			starts to feel like a different component. 6px is where I would land.
+		</p>
+	</div>
+</div>
+
+<h2>Le même tuile, deux comportements</h2>
+<p class="note">
+	Left: what the site does today. Right: the stamp at the button's full 1.2°. Switch the state
+	control above to compare them frozen.
+</p>
+
+<div class="pair">
+	<div>
+		<h3>Actuel — élévation</h3>
+		<div class="mv-tile mv-tile--media t-lift">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__eyebrow">Guide</span>
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Londres avec des ados</a></span>
+				<span class="mv-tile__description">Trois jours, et la certitude d'y revenir.</span>
+			</span>
+		</div>
+		<ul class="flags"><li class="ok">no rotation</li><li class="">current behaviour</li></ul>
+	</div>
+	<div>
+		<h3>Tampon — 1,2°</h3>
+		<div class="mv-tile mv-tile--media t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__eyebrow">Guide</span>
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Londres avec des ados</a></span>
+				<span class="mv-tile__description">Trois jours, et la certitude d'y revenir.</span>
+			</span>
+		</div>
+		<ul class="flags"><li class="warn">rotates text</li><li class="ok">matches the buttons</li></ul>
+	</div>
+</div>
+
+<h2>L'angle selon la largeur</h2>
+<p class="note">
+	A corner travels <code>(width ÷ 2) × sin(angle)</code>. On a 320px card that is 3.4px at 1.2°;
+	on a full-width row it is nearer 8px, and it stops reading as a stamp.
+</p>
+
+<div class="pair">
+	<div>
+		<h3>1,2° — carte étroite</h3>
+		<div class="mv-tile mv-tile--media t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Kew Gardens</a></span>
+				<span class="mv-tile__description">Une matinée entière, et on y retournerait.</span>
+			</span>
+		</div>
+		<ul class="flags"><li class="ok">~3px corner travel</li></ul>
+	</div>
+	<div>
+		<h3>0,6° — carte large</h3>
+		<div class="mv-tile mv-tile--media t-soft">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Kew Gardens</a></span>
+				<span class="mv-tile__description">Une matinée entière, et on y retournerait.</span>
+			</span>
+		</div>
+		<ul class="flags"><li class="ok">half the travel</li><li class="">keeps a hint of tilt</li></ul>
+	</div>
+</div>
+
+<h2>Chaque variante de tuile du site</h2>
+<p class="note">
+	Every one of these exists in the theme today. The treatment under each is the one I would give
+	it, and the flags say why.
+</p>
+
+<div class="stack">
+	<div>
+		<h3>mv-tile--result — résultats du travel finder, pleine largeur</h3>
+		<div class="mv-tile mv-tile--result t-press">
+			<span class="mv-tile__media img-b"></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Une semaine en Algarve avec enfants</a></span>
+				<span class="mv-tile__description">Plage, falaises, et des étapes courtes.</span>
+			</span>
+		</div>
+		<ul class="flags"><li class="warn">never rotate — 8px corner travel</li><li class="ok">press only</li></ul>
+	</div>
+
+	<div>
+		<h3>mv-tile--overlay — texte sur image (archives, hubs)</h3>
+		<div class="grid">
+			<div class="mv-tile mv-tile--overlay t-stamp">
+			<span class="mv-tile__media img-a"></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Angleterre</a></span>
+				<span class="mv-tile__description">12 articles</span>
+			</span>
+		</div>
+			<div class="mv-tile mv-tile--overlay t-stamp">
+			<span class="mv-tile__media img-b"></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Portugal</a></span>
+				<span class="mv-tile__description">12 articles</span>
+			</span>
+		</div>
+			<div class="mv-tile mv-tile--overlay t-stamp">
+			<span class="mv-tile__media img-d"></span>
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Italie</a></span>
+				<span class="mv-tile__description">12 articles</span>
+			</span>
+		</div>
+		</div>
+		<ul class="flags"><li class="ok">rotation works — no body text</li><li class="ok">perforation reads white on the image</li></ul>
+	</div>
+
+	<div>
+		<h3>mv-tile--media avec badges — accueil</h3>
+		<div class="grid">
+			<div class="mv-tile mv-tile--media t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__badges"><span class="mv-badge mv-badge--primary">Angleterre</span><span class="mv-badge mv-badge--warm">City trip</span></span>
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Bath en un week-end</a></span>
+				<span class="mv-tile__description">Thermes romains et crêpes.</span>
+			</span>
+		</div>
+			<div class="mv-tile mv-tile--media t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__badges"><span class="mv-badge mv-badge--primary">Angleterre</span><span class="mv-badge mv-badge--warm">City trip</span></span>
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Notre semaine en Algarve</a></span>
+				<span class="mv-tile__description">Falaises et plages tranquilles.</span>
+			</span>
+		</div>
+			<div class="mv-tile mv-tile--media t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__badges"><span class="mv-badge mv-badge--primary">Angleterre</span><span class="mv-badge mv-badge--warm">City trip</span></span>
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Séville au printemps</a></span>
+				<span class="mv-tile__description">Orangers et patios frais.</span>
+			</span>
+		</div>
+		</div>
+		<ul class="flags"><li class="warn">badges rotate with the card</li><li class="ok">3.4px corner travel</li></ul>
+	</div>
+
+	<div>
+		<h3>mv-tile--compact — listes, barres latérales</h3>
+		<div class="grid">
+			<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Camden Market</a></span></span>
+		</div>
+			<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">La Tamise en bateau</a></span></span>
+		</div>
+			<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Kew Gardens</a></span></span>
+		</div>
+			<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Greenwich</a></span></span>
+		</div>
+		</div>
+		<ul class="flags"><li class="ok">small and square — the tilt reads best here</li></ul>
+	</div>
+
+	<div>
+		<h3>mv-tile--text — sans image</h3>
+		<div class="grid">
+			<div class="mv-tile mv-tile--text mv-tile--no-media t-stamp">
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Organiser ses voyages</a></span>
+				<span class="mv-tile__description">Nos listes, nos erreurs, nos sacs.</span>
+			</span>
+		</div>
+			<div class="mv-tile mv-tile--text mv-tile--no-media t-stamp">
+			<span class="mv-tile__body">
+				<span class="mv-tile__title"><a class="mv-tile__link" href="#">Budget tour du monde</a></span>
+				<span class="mv-tile__description">Ce que huit mois ont coûté.</span>
+			</span>
+		</div>
+		</div>
+		<ul class="flags"><li class="warn">all text — rotation is most visible here</li><li class="">consider 0.6°</li></ul>
+	</div>
+
+	<div>
+		<h3>mv-tile--utility — encadré TOC, dans le corps de l'article</h3>
+		<div class="mv-tile mv-tile--utility t-none">
+			<h4>Dans cet article</h4>
+			<p>Ceci n'est pas un lien. C'est un conteneur, et il ne devrait rien faire au survol.</p>
+		</div>
+		<ul class="flags"><li class="warn">not a button — no treatment at all</li><li class="ok">deliberately inert</li></ul>
+	</div>
+</div>
+
+<h2>Le test qui compte&nbsp;: la grille serrée</h2>
+<p class="note">
+	Rotation is the one treatment that can make a tile overlap its neighbour. Here the gap is cut
+	to 0.35rem and each tile is outlined, so any collision is visible. Switch to <em>survol</em> above.
+</p>
+
+<div class="grid tight">
+	<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-a"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Un</a></span></span>
+		</div>
+	<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-b"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Deux</a></span></span>
+		</div>
+	<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-c"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Trois</a></span></span>
+		</div>
+	<div class="mv-tile mv-tile--media mv-tile--compact t-stamp">
+			<span class="mv-tile__media"><span class="mv-tile__img img-d"></span></span>
+			<span class="mv-tile__body"><span class="mv-tile__title"><a class="mv-tile__link" href="#">Quatre</a></span></span>
+		</div>
+</div>
+
+<h2>Ce que je retiendrais</h2>
+<p class="note">
+	<strong>Overlay and compact tiles take the stamp best</strong> — little or no body text, small
+	boxes, and the perforation reads well over an image. <strong>Media cards with an excerpt want
+	0.6°</strong>: the tilt still registers, and a paragraph of rotated text does not.
+	<strong>Result rows should never rotate</strong>, only press. <strong>The utility tile should
+	do nothing at all</strong> — it is a container, and hover motion would promise a click that
+	does not exist. Which is the real finding here: "tiles behave like buttons" is right for the
+	tiles that <em>are</em> buttons, and wrong for the one that is not.
+</p>
+<p class="note">
+	On the corner: <strong>6px</strong>. 4px is literal consistency with the buttons and reads a
+	touch severe once a card is 320px wide; 14px — today's value — now looks like a leftover from
+	before the buttons became tickets. 6px keeps the family resemblance without pretending a card
+	is a button. The compact variant drops to 4px alongside it, as it already runs tighter than
+	the others in the theme.
+</p>
+
+</div>
+</body>
+</html>

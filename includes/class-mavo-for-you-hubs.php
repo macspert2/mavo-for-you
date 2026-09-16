@@ -214,6 +214,23 @@ class MFY_Hubs {
 	}
 
 	/**
+	 * A hub's published children, for callers outside the ranking.
+	 *
+	 * The /pour-vous/ page shows a hub's children as a row of their own rather
+	 * than folding them into a candidate pool, so it asks for them directly.
+	 * Same cached query, same published-only guarantee.
+	 *
+	 * @return int[]
+	 */
+	public static function children( int $hub_id, string $type, int $limit ): array {
+		if ( ! self::available() || self::hub_type( $hub_id ) !== $type ) {
+			return [];
+		}
+
+		return self::children_of( $hub_id, $type, max( 1, $limit ) );
+	}
+
+	/**
 	 * A hub's published children, cached.
 	 *
 	 * This is a WP_Query per hub, and a hub's children are the same for every

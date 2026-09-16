@@ -17,9 +17,9 @@
 <div class="wrap">
 
 <header class="page">
-	<h1>Styles de liens — <em>douze idées et trois propositions</em></h1>
+	<h1>Styles de liens — <em>dix-huit idées et quatre propositions</em></h1>
 	<p class="lede">
-		A gallery of link treatments, each showing all four LVHA states, followed by three
+		A gallery of link treatments, each showing all four LVHA states, followed by four
 		complete proposals built from the Maman Voyage palette. Every card says whether the
 		style moves the text around it — which decides whether it can be used for marking
 		links <em>after</em> the page has loaded.
@@ -116,7 +116,75 @@
 
 </div>
 
-<h2>Trois propositions pour Maman Voyage</h2>
+<h2>Le sceau, <em>appliqué au texte</em></h2>
+<p class="section-note">
+	The buttons and tiles now wear « sceau frappé » — a tilt on hover, and on press a recoil plus
+	relief. Can a link go the same way? <strong>Half of it can, and it is the half that
+	matters.</strong>
+</p>
+<p class="section-note">
+	<strong>The motion cannot come along.</strong> <code>transform</code> does not apply to a
+	non-replaced inline box at all; the fix is <code>display: inline-block</code>, and the fix is
+	worse than the problem — an inline-block link is one unbreakable box, so a two-word link near
+	the end of a line jumps whole to the next line and the paragraph reflows. In articles that
+	carry a link every few lines, that is fatal. It would also be <em>wrong</em> if it worked: a
+	recoil says "you pressed this", and nobody pressed a word in a sentence.
+</p>
+<p class="section-note">
+	<strong>The relief does come along.</strong> <code>text-shadow</code> applies to inline text,
+	never affects layout, and wraps for free — and it is the half readers actually register: the
+	highlight moving from below the glyphs to above them. So the seal's <em>motion</em> belongs to
+	things you press, and its <em>relief</em> to things you mark.
+</p>
+<p class="section-note">
+	<strong>And one constraint nobody expects: white paper cannot be raised.</strong> A raised
+	letter needs a highlight lighter than the surface under it, and on <code>#fff</code> there is
+	nothing lighter than the paper — <code>text-shadow: 0 1px 0 white</code> paints white on white.
+	So in article prose the word can only ever <em>sink</em>, never stand proud. Which turns out to
+	be no loss at all: sinking is what a press does, so the one state white paper can express is
+	the only one a link needs.
+</p>
+
+<div class="gallery">
+
+	<div class="card s-empreinte">
+		<h3>13 · Empreinte</h3>
+		<p>Le train de nuit nous a déposés à <a href="#">Séville</a> juste avant l'aube.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li class="">what ships + one line</li></ul>
+	</div>
+
+	<div class="card s-poincon">
+		<h3>14 · Poinçon</h3>
+		<p>Toutes nos étapes en <a href="#">Andalousie</a>, du plus court au plus long.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li class="warn">needs a non-white ground</li></ul>
+	</div>
+
+	<div class="card s-cachet">
+		<h3>15 · Cachet</h3>
+		<p><a href="#">Lire le guide de Londres</a></p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li class="warn">inline-block — never in prose</li></ul>
+	</div>
+
+	<div class="card s-filigrane">
+		<h3>16 · Filigrane</h3>
+		<p>Nous avons passé trois jours à <a href="#">Kew Gardens</a> sans voir la moitié du parc.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li class="">works on white</li></ul>
+	</div>
+
+	<div class="card s-sillon">
+		<h3>17 · Sillon</h3>
+		<p>Le carnet mentionnait <a href="#">Bénodet</a>, souligné deux fois.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="ok">:visited-safe</li><li class="warn">needs a non-white ground</li></ul>
+	</div>
+
+	<div class="card s-lu">
+		<h3>18 · Lu</h3>
+		<p>Vous avez déjà lu <a href="#" class="mfy-read-link">Édimbourg en août</a>, mais pas encore <a href="#">Bath en hiver</a>.</p>
+		<ul class="flags"><li class="ok">no reflow</li><li class="warn">class, not :visited</li><li class="">permanent strike</li></ul>
+	</div>
+</div>
+
+<h2>Quatre propositions pour Maman Voyage</h2>
 <p class="section-note">
 	Each of these is a complete LVHA set plus <code>:focus-visible</code>, using only the
 	site's own palette. They are meant to be used together: <strong>A</strong> inside article
@@ -196,35 +264,72 @@
 .mv-note a<span class="p">:focus-visible</span> { <span class="p">outline</span>: 2px solid <span class="v">#4e74a5</span>; <span class="p">outline-offset</span>: 3px; }</pre>
 </article>
 
-<article class="proposal p-tampon">
+<article class="proposal p-cachet">
 	<header>
-		<h3>C · « Tampon » — pour les liens qui sont des boutons</h3>
-		<p>A stamped box that inks in on hover and tilts a degree, like a rubber stamp catching the paper. For "lire la suite", hub links, and the end of a card — never inside a paragraph.</p>
+		<h3>C · « Cachet » — pour les liens qui sont des boutons</h3>
+		<p>Updated to the seal the site's buttons now wear: a rim at rest, a one-degree tilt on hover, and on press the face sinks. For "lire la suite", hub links, and the end of a card — never inside a paragraph.</p>
 	</header>
 	<div class="demo">
 		<p><a href="#">Lire le guide de Londres</a> &nbsp; <a href="#">Voir toutes nos destinations</a></p>
 	</div>
 	<dl class="states">
-		<div><dt>:link</dt><dd>white, warm border</dd></div>
-		<div><dt>:visited</dt><dd>greyed, flat</dd></div>
-		<div><dt>:hover</dt><dd>inked warm, tilts</dd></div>
-		<div><dt>:active</dt><dd>highlight, presses</dd></div>
+		<div><dt>:link</dt><dd>white, faint rim</dd></div>
+		<div><dt>:visited</dt><dd>greyed</dd></div>
+		<div><dt>:hover</dt><dd>rim deepens, tilts 1°</dd></div>
+		<div><dt>:active</dt><dd>recoils, face sinks</dd></div>
 		<div><dt>:focus-visible</dt><dd>blue outline</dd></div>
 	</dl>
-<pre>.mv-stamp a {
-  <span class="p">display</span>: inline-block;
-  <span class="p">padding</span>: .22em .7em;
-  <span class="p">border</span>: 1.5px solid <span class="v">#8863538c</span>;
+<pre><span class="c">/* The recoil: a transition cannot overshoot, a keyframe can. */</span>
+<span class="p">@keyframes</span> mv-sceau {
+  0%   { <span class="p">transform</span>: rotate(-1deg)   scale(1);    }
+  45%  { <span class="p">transform</span>: rotate(.35deg)  scale(.965); }
+  70%  { <span class="p">transform</span>: rotate(.2deg)   scale(1.005);}
+  100% { <span class="p">transform</span>: rotate(.3deg)   scale(.99);  }
+}
+.mv-stamp a {
+  <span class="p">display</span>: inline-block;          <span class="c">/* only because these sit alone */</span>
+  <span class="p">padding</span>: .28em .8em;
   <span class="p">border-radius</span>: 4px;
   <span class="p">background-color</span>: <span class="v">#fff</span>;
   <span class="p">color</span>: <span class="v">#5c3d2e</span>;
-  <span class="p">text-decoration</span>: none;
-  <span class="p">transition</span>: transform .2s cubic-bezier(.34,1.6,.64,1), background-color .2s, border-color .2s, color .2s;
+  <span class="p">box-shadow</span>: inset 0 0 0 2px color-mix(in srgb, currentColor 20%, transparent);
+  <span class="p">text-shadow</span>: 0 1px 0 <span class="v">rgba(255,255,255,.95)</span>;
 }
-.mv-stamp a<span class="p">:visited</span> { <span class="p">color</span>: <span class="v">#757575</span>; <span class="p">border-color</span>: <span class="v">#e6e6e6</span>; <span class="p">background-color</span>: <span class="v">#fbfbfa</span>; }
-.mv-stamp a<span class="p">:hover</span>   { <span class="p">color</span>: <span class="v">#fff</span>; <span class="p">background-color</span>: <span class="v">#886353</span>; <span class="p">border-color</span>: <span class="v">#886353</span>; <span class="p">transform</span>: rotate(-1.2deg); }
-.mv-stamp a<span class="p">:active</span>  { <span class="p">background-color</span>: <span class="v">#a92d87</span>; <span class="p">border-color</span>: <span class="v">#a92d87</span>; <span class="p">transform</span>: rotate(.4deg) scale(.98); }
-.mv-stamp a<span class="p">:focus-visible</span> { <span class="p">outline</span>: 2px solid <span class="v">#4e74a5</span>; <span class="p">outline-offset</span>: 3px; }</pre>
+.mv-stamp a<span class="p">:hover</span>  { <span class="p">transform</span>: rotate(-1deg); <span class="p">box-shadow</span>: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent), 0 6px 16px <span class="v">rgba(58,58,58,.13)</span>; }
+.mv-stamp a<span class="p">:active</span> {
+  <span class="p">animation</span>: mv-sceau .28s cubic-bezier(.25,.7,.3,1) both;
+  <span class="p">box-shadow</span>: inset 0 0 0 2px color-mix(in srgb, currentColor 42%, transparent),
+              inset 0 3px 5px <span class="v">rgba(0,0,0,.3)</span>,      <span class="c">/* top rim in shadow */</span>
+              inset 0 -2px 0 <span class="v">rgba(255,255,255,.35)</span>; <span class="c">/* bottom catches light */</span>
+  <span class="p">text-shadow</span>: 0 -1px 0 <span class="v">rgba(255,255,255,.95)</span>;  <span class="c">/* the glint moves above */</span>
+}</pre>
+</article>
+
+<article class="proposal p-empreinte">
+	<header>
+		<h3>D · « Empreinte » — le corps des articles, et le seul changement à déployer</h3>
+		<p>Ligne d'horizon — what is live today — with <strong>one declaration added to <code>:active</code></strong>. Same colours, same hairline, same wipe. The word lies flat at rest, because white paper cannot raise it, and is struck when pressed.</p>
+	</header>
+	<div class="demo">
+		<p>Le train de nuit nous a déposés à <a href="#">Séville</a> juste avant l'aube, et nous avons marché jusqu'à <a href="#">l'Alcázar</a> pendant que la ville dormait encore.</p>
+		<p>Trois jours plus tard, <a href="#">Grenade</a> — et cette fois nous avions réservé.</p>
+	</div>
+	<dl class="states">
+		<div><dt>:link</dt><dd>blue, hairline rule</dd></div>
+		<div><dt>:visited</dt><dd>warm brown</dd></div>
+		<div><dt>:hover</dt><dd>warm line wipes across</dd></div>
+		<div><dt>:active</dt><dd>highlight + struck</dd></div>
+		<div><dt>:focus-visible</dt><dd>blue outline</dd></div>
+	</dl>
+<pre><span class="c">/* Everything here already ships. Only the :active rule is new. */</span>
+.entry-content a<span class="p">:not([class])</span><span class="p">:active</span> {
+  <span class="p">color</span>: <span class="v">#a92d87</span>;
+  <span class="c">/* No `text-shadow: inset` exists — only box-shadow has that keyword —
+     so sunken text is faked by moving the highlight ABOVE the glyphs.
+     That flip is what a deboss is, optically. */</span>
+  <span class="p">text-shadow</span>: 0 -1px 0 <span class="v">rgba(255,255,255,.9)</span>, 0 1px 1px <span class="v">rgba(0,0,0,.3)</span>;
+}
+<span class="c">/* And add text-shadow to the transition already on the base rule. */</span></pre>
 </article>
 
 <h2>Deux choses à savoir</h2>

@@ -4,6 +4,10 @@ A session-only, privacy-conscious personalization layer for Maman Voyage. It add
 **Pour vous / For you / Für Euch** block after the content of eligible posts and pages,
 built from what the visitor has been reading during this visit — and nothing else.
 
+Once a visit is substantial enough, that block also links on to **/pour-vous/**, a
+standalone page where the same session is laid out as a row per reason rather than
+merged into three cards. See [The /pour-vous/ page](#the-pour-vous-page).
+
 ## How it works
 
 The constraint that shapes everything: **the page HTML must stay cacheable**. So the
@@ -68,6 +72,88 @@ A post carrying the shortcode never also gets the after-content block — the sh
 position wins, and the hook stands down. If the impersonal ranking finds nothing, the
 placeholder is still emitted (empty, and hidden by CSS), so a visitor who later earns a
 personalised block still has somewhere to put it.
+
+## The /pour-vous/ page
+
+A page of its own, created by hand in WordPress with one shortcode in it:
+
+```
+[mavo_for_you_page]
+```
+
+French only for now (`mavo_for_you_page_langs`), at the slug `pour-vous`
+(`mavo_for_you_page_slugs`). The plugin finds the page by that slug, so nothing has to
+be registered anywhere; `mavo_for_you_page_id` overrides the lookup if a site needs it.
+
+The block answers a hard question — of everything on the site, which *three* articles
+does this reader most want next? — by merging every signal into one number. That merge
+is what makes three cards possible, and it is also what throws information away. The
+page takes the other option: each signal becomes a heading of its own, filled with what
+that signal alone would pick.
+
+```
+POUR VOUS                                                    (block, 3 cards)
+      ↓  "Voir toutes vos suggestions"
+/pour-vous/
+   Parce que vous avez cherché « londres ado »   ◀ ▶   ■ ■ ■ ■ ■ ■
+   Dans « Londres en famille »                   ◀ ▶   ■ ■ ■ ■ ■
+   Destination Londres                           ◀ ▶   ■ ■ ■ ■ ■ ■ ■
+   Plus d'articles « Séjours en ville »          ◀ ▶   ■ ■ ■ ■ ■ ■ ■ ■
+   Consultés récemment                                 ■ ■
+```
+
+Row kinds, in the order they appear (`MFY_Rows::KIND_ORDER`):
+
+| kind | heading | filled with |
+|---|---|---|
+| `search` | *Parce que vous avez cherché « … »* | what the query maps to in the filter dictionary |
+| `hub` | *Dans « … »* | the other children of a hub the session is reading in |
+| `geo` | *Destination …* | articles tagged with a place the session keeps returning to |
+| `filter` | *Plus d'articles « … »* | articles scoring 2 on a filter the session scores 2 on |
+| `recent` | *Consultés récemment* | the visitor's own history, always last |
+
+Search leads because a query is the visitor stating in their own words what they came
+for, and nothing the plugin infers outranks that. Hubs come next — an editor's statement
+about what belongs together — then geography, then themes, which is the most abstract of
+the four.
+
+Three rules shape what a reader actually sees:
+
+- **Four tiles or no row.** A strip of three does not rotate, and a heading over three
+  articles promises a category the site cannot fill. `mavo_for_you_page_row_min`.
+  "Consultés récemment" is the one exception: it promises no category, so two is fine.
+- **Repetition between rows is the point.** An article can be both *in the London guide*
+  and *a city break with teenagers*; hiding one of those to avoid repeating a thumbnail
+  would make the headings lie. Within a row, of course, once. A row whose every tile
+  already appeared in one earlier row is dropped — two headings over one set of articles
+  reads as a bug however true both are.
+- **Already-read articles stay.** The block is about what is next; the page is about the
+  territory. They carry the same `data-mavo-post-id` as every other tile, so the
+  existing read-marking pass dims them with no extra code.
+
+**The link.** The block offers it only when the session can actually fill
+`mavo_for_you_page_link_min_rows` rows (3) of four tiles or more — measured, not
+guessed: `MFY_Rows::count_available()` assembles the rows for real and stops before
+hydrating them into post objects, which is why that check costs pool queries and not a
+hundred `get_post()` calls.
+
+**A cold visit** — a shared link, a crawler, a first-time reader — gets rows built from
+the catalogue instead: the most-read articles under a few broad filters. The page says
+so in its own copy rather than claiming to be personalized, and because there is no
+visitor in it, it is the one part of this feature that is cached.
+
+**Caching.** Exactly the block's arrangement, for exactly the block's reason. The
+shortcode emits a placeholder and one line of loading copy — no post ID beyond the
+page's own, nothing that could differ between two visitors — so Swift and Cloudflare
+cache the page like any article. Rows arrive afterwards from
+`POST /wp-json/mavo/v1/for-you-page`, `no-store` and `private`. With JS off, a
+`<noscript>` rule hides the loading line and shows the explanatory one instead.
+
+The strip is a plain `overflow-x` container with scroll snapping: touch, trackpad and
+keyboard all drive it natively, and the arrows only call `scrollTo()` on it. They wrap
+rather than stop — next at the end returns to the start — which is endless in the sense
+that matters, without a cloned DOM whose copies would have to be kept out of the tab
+order and out of the read-marking pass. A strip that fits hides its arrows entirely.
 
 ## The signals
 
@@ -206,14 +292,18 @@ includes/class-mavo-for-you-data.php the only code that touches tvf data
 includes/class-mavo-for-you-geo.php  the only code that touches geo data
 includes/class-mavo-for-you-hubs.php the only code that touches hub data
 includes/class-mavo-for-you-scorer.php   ranking
-includes/class-mavo-for-you-rest.php     endpoint + input validation
+includes/class-mavo-for-you-rows.php     /pour-vous/ rows: one per signal
+includes/class-mavo-for-you-rest.php     endpoints + input validation
 includes/class-mavo-for-you-render.php   placeholder, assets, eligibility
 includes/class-mavo-for-you-shortcode.php  [geo_related], the impersonal block
+includes/class-mavo-for-you-page.php     [mavo_for_you_page], /pour-vous/
 includes/class-mavo-for-you-cache.php      generation-busted transients
 includes/class-mavo-for-you-admin.php    Settings → Mavo For You
 includes/class-mavo-for-you-tuner.php    Tools → Mavo For You scoring
 assets/js/mavo-for-you.js            tracking + request + rendering
+assets/js/mavo-for-you-page.js       /pour-vous/: rows and their strips
 assets/css/mavo-for-you.css          section styling (cards reuse .mv-tile)
+assets/css/mavo-for-you-page.css     row + strip styling (tiles reuse .mv-tile)
 tests/                               plain-PHP suites, no tooling required
 ```
 
@@ -433,6 +523,14 @@ Geography: `mavo_for_you_geo_levels`, `mavo_for_you_geo_points`,
 `mavo_for_you_geo_focus_threshold`, `mavo_for_you_geo_reserved_ratio`,
 `mavo_for_you_geo_reserved_slots`, `mavo_for_you_geo_pool_size`.
 
+The /pour-vous/ page: `mavo_for_you_page_langs`, `mavo_for_you_page_slugs`,
+`mavo_for_you_page_id`, `mavo_for_you_page_row_size`, `mavo_for_you_page_row_min`,
+`mavo_for_you_page_max_rows`, `mavo_for_you_page_rows_per_kind`,
+`mavo_for_you_page_geo_places_per_level`, `mavo_for_you_page_link_min_rows`,
+`mavo_for_you_page_fallback_filters`, `mavo_for_you_page_fallback_rows`,
+`mavo_for_you_page_fallback_cache_ttl`, `mavo_for_you_page_labels`,
+`mavo_for_you_page_placeholder_html`.
+
 Already read: `mavo_for_you_mark_read`, `mavo_for_you_mark_read_everywhere`,
 `mavo_for_you_mark_read_selectors`.
 
@@ -453,6 +551,8 @@ php tests/test-hubs.php      # hub placement, ancestor walk, validation, recent 
 php tests/test-hub-children.php  # sibling candidates, eligibility, bounded pools
 php tests/test-no-hubs.php       # every hub feature off when Hub Manager is absent
 php tests/test-utility-pages.php # contact/privacy/legal pages stay out of the profile
+php tests/test-rows.php          # /pour-vous/ rows: kinds, order, minimums, redundancy
+php tests/test-page.php          # the link's conditions, the page endpoint, the placeholder
 php tests/test-shortcode.php     # [geo_related]: impersonal ranking, markup, handover
 php tests/test-render.php        # where the placeholder goes, and where it stands down
 php tests/test-tuner.php         # the scoring instrument's percentiles and sweep
@@ -480,6 +580,17 @@ npm.
   "Consultés récemment" (marked), never as a suggestion — and its other children
   should be suggested.
 - With JS off: page fully usable, no gap, no block.
+- Read enough for three rows: the block should gain a "Voir toutes vos suggestions"
+  link. Read only two articles about one place: no link, because the page behind it
+  would be one strip.
+- On /pour-vous/: rows appear under their own headings, articles already read are dimmed
+  with a check, "Consultés récemment" is last and quieter.
+- Narrow the window until a strip overflows: the arrows appear. Widen it until it fits:
+  they disappear. Press next at the end of a strip: it returns to the start.
+- Open /pour-vous/ in a fresh private window: rows from the catalogue, and copy that
+  does not claim they are personal.
+- View the source of /pour-vous/ with JS off: one placeholder, one line of copy, no
+  tiles and no post IDs.
 - Compare the cached HTML of two anonymous visitors: byte-identical, placeholder empty.
 - Recommendation and recently-viewed links carry `data-mavo-post-id`.
 - Click "Clear my history" on a plain post: the block goes, leaving one line of

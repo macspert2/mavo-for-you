@@ -13,6 +13,7 @@ class MFY_Rest {
 
 	const REST_NAMESPACE = 'mavo/v1';
 	const ROUTE          = '/for-you';
+	const ROUTE_PAGE     = '/for-you-page';
 
 	public static function init(): void {
 		add_action( 'rest_api_init', [ __CLASS__, 'register_routes' ] );
@@ -31,10 +32,26 @@ class MFY_Rest {
 				'permission_callback' => '__return_true',
 			]
 		);
+
+		// The /pour-vous/ page. Same payload, same validation, same headers —
+		// a different shape of answer.
+		register_rest_route(
+			self::REST_NAMESPACE,
+			self::ROUTE_PAGE,
+			[
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => [ __CLASS__, 'handle_page' ],
+				'permission_callback' => '__return_true',
+			]
+		);
 	}
 
 	public static function url(): string {
 		return rest_url( self::REST_NAMESPACE . self::ROUTE );
+	}
+
+	public static function page_url(): string {
+		return rest_url( self::REST_NAMESPACE . self::ROUTE_PAGE );
 	}
 
 	public static function handle( WP_REST_Request $request ) {
@@ -101,11 +118,112 @@ class MFY_Rest {
 			'recently_viewed' => self::recently_viewed( $views, $current_post_id, $lang ),
 		];
 
+		// Only alongside a block the reader can actually see, and only then is
+		// the row assembly it costs worth doing.
+		if ( $response['show'] ) {
+			// A [geo_related] level attribute narrowed the profile's geography
+			// to one level; the page uses all of them, so a narrowed profile
+			// would under-count its rows. Rebuild rather than mislead.
+			$profile = empty( $options['geo_levels'] ) ? ( $ranked['profile'] ?? null ) : null;
+			$page    = self::page_offer( $lang, $views, $searches, $referral, $profile );
+
+			if ( $page ) {
+				$response['page'] = $page;
+			}
+		}
+
 		if ( $debug_mode ) {
 			$response['debug'] = $ranked['debug'];
 		}
 
 		return self::respond( $response, $debug_mode );
+	}
+
+	/**
+	 * POST /wp-json/mavo/v1/for-you-page — the standalone suggestions page.
+	 *
+	 * There is no "current post" here, so the language cannot be read off the
+	 * page being read. It is taken from the suggestions page itself, whose ID
+	 * the client sends and which is verified against the one this site has
+	 * registered for that language — so the client still cannot choose a
+	 * language, it can only name a page that decides one.
+	 */
+	public static function handle_page( WP_REST_Request $request ) {
+		$debug_mode = current_user_can( 'manage_options' ) && $request->get_param( 'debug' );
+
+		$page_id = absint( $request->get_param( 'page_id' ) );
+		$lang    = $page_id ? MFY_Data::post_lang( $page_id ) : '';
+
+		if ( '' === $lang || ! MFY_Config::is_enabled_for_lang( $lang ) || ! MFY_Page::is_suggestions_page( $page_id, $lang ) ) {
+			return self::respond( self::empty_page_response( '', 'not the suggestions page' ), $debug_mode );
+		}
+
+		if ( ! MFY_Data::integration_available() ) {
+			self::log_integration_missing();
+			return self::respond( self::empty_page_response( $lang, 'travel-finder filter data unavailable' ), $debug_mode );
+		}
+
+		$views    = self::sanitize_views( (array) $request->get_param( 'views' ), $lang );
+		$searches = self::sanitize_searches( (array) $request->get_param( 'searches' ) );
+		$referral = self::sanitize_referral( $request->get_param( 'referral' ) );
+
+		// Unlike the block, the page does not wait for a meaningful-view
+		// threshold. Someone who asked for it by following a link, or by
+		// typing the URL, gets whatever their session can justify — and a
+		// visitor with nothing gets the catalogue's own answer instead.
+		$built = MFY_Rows::build( $lang, $views, $searches, $referral );
+
+		$response = [
+			'show'         => ! empty( $built['rows'] ),
+			'lang'         => $lang,
+			'personalized' => $built['personalized'],
+			'rows'         => $built['rows'],
+		];
+
+		if ( $debug_mode ) {
+			$response['debug'] = $built['debug'];
+		}
+
+		return self::respond( $response, $debug_mode );
+	}
+
+	/**
+	 * The link the block offers to the page, or null.
+	 *
+	 * Three conditions, all of which have to hold: the page exists in this
+	 * language, the block itself is being shown (the caller only reaches here
+	 * once it is), and the session can actually fill enough rows to be worth
+	 * the trip. The last one is measured, not guessed — the rows are assembled
+	 * for real and counted, just not hydrated into post objects.
+	 */
+	private static function page_offer( string $lang, array $views, array $searches, ?array $referral, ?array $profile ): ?array {
+		if ( ! MFY_Page::available( $lang ) ) {
+			return null;
+		}
+
+		$rows = MFY_Rows::count_available( $lang, $views, $searches, $referral, $profile );
+
+		if ( $rows < MFY_Config::page_link_min_rows() ) {
+			return null;
+		}
+
+		$labels = MFY_Config::labels( $lang );
+
+		return [
+			'url'   => MFY_Page::url( $lang ),
+			'label' => (string) ( $labels['pageLink'] ?? '' ),
+			'rows'  => $rows,
+		];
+	}
+
+	private static function empty_page_response( string $lang, string $reason ): array {
+		return [
+			'show'         => false,
+			'lang'         => $lang,
+			'personalized' => false,
+			'rows'         => [],
+			'reason'       => $reason,
+		];
 	}
 
 	// -------------------------------------------------------------------------

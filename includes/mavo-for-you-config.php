@@ -51,7 +51,10 @@ class MFY_Config {
 	 * or duplicate suffix is stripped ("contact-en", "impressum-2").
 	 */
 	public static function excluded_page_slugs(): array {
-		return (array) apply_filters( 'mavo_for_you_excluded_page_slugs', [
+		// The suggestions page joins them by construction rather than by hand:
+		// it is built *from* the profile, so letting it into the profile would
+		// have a reader's history describe the page that describes it.
+		return (array) apply_filters( 'mavo_for_you_excluded_page_slugs', array_merge( array_values( self::page_slugs() ), [
 			// FR
 			'contact', 'contactez-nous', 'mentions-legales', 'politique-de-confidentialite',
 			'confidentialite', 'cgu', 'cgv', 'plan-du-site',
@@ -61,7 +64,7 @@ class MFY_Config {
 			// DE
 			'kontakt', 'impressum', 'datenschutz', 'datenschutzerklaerung',
 			'agb', 'nutzungsbedingungen', 'haftungsausschluss',
-		] );
+		] ) );
 	}
 
 	/** Post types whose views enter the local profile. */
@@ -234,7 +237,7 @@ class MFY_Config {
 	 */
 	public static function mark_read_selectors(): array {
 		return (array) apply_filters( 'mavo_for_you_mark_read_selectors', [
-			'skip'  => '#mavo-nav, .mavo-nav, .site-footer, .mfy__recent, .mfy__footer',
+			'skip'  => '#mavo-nav, .mavo-nav, .site-footer, .mfy__recent, .mfy__footer, .mfy-page__row--recent',
 			'tile'  => '.mv-tile',
 			'prose' => '.entry-content',
 		] );
@@ -532,6 +535,125 @@ class MFY_Config {
 		return (array) apply_filters( 'mavo_for_you_search_filter_map', $map, $lang );
 	}
 
+	// -------------------------------------------------------------------------
+	// The /pour-vous/ page
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Languages the standalone suggestions page exists in.
+	 *
+	 * French only for now — the page is written by hand, and a link pointing
+	 * at a page that does not exist in the reader's language is worse than no
+	 * link at all. Adding a language here is a one-line change once its page
+	 * exists; MFY_Page still verifies that it does before linking to it.
+	 */
+	public static function page_langs(): array {
+		return (array) apply_filters( 'mavo_for_you_page_langs', [ 'fr' ] );
+	}
+
+	/** The page's slug, per language. */
+	public static function page_slugs(): array {
+		return (array) apply_filters( 'mavo_for_you_page_slugs', [
+			'fr' => 'pour-vous',
+			'en' => 'for-you',
+			'de' => 'fuer-euch',
+		] );
+	}
+
+	/**
+	 * Tiles fetched per row.
+	 *
+	 * Twelve is roughly three screens' worth of a carousel on a desktop and a
+	 * dozen swipes on a phone — enough that the strip is worth rotating, few
+	 * enough that a row is one bounded query.
+	 */
+	public static function page_row_size(): int {
+		return (int) apply_filters( 'mavo_for_you_page_row_size', 12 );
+	}
+
+	/**
+	 * Tiles a row must have to be shown at all.
+	 *
+	 * Four. A strip of three does not rotate — it just sits there with two
+	 * arrows that do nothing — and a heading over three tiles promises a
+	 * category the site cannot actually fill.
+	 */
+	public static function page_row_min(): int {
+		return (int) apply_filters( 'mavo_for_you_page_row_min', 4 );
+	}
+
+	/** Ceiling on how many rows one page may build. */
+	public static function page_max_rows(): int {
+		return (int) apply_filters( 'mavo_for_you_page_max_rows', 12 );
+	}
+
+	/**
+	 * Per-kind row caps, so no single signal can fill the page.
+	 *
+	 * A reader four articles into one hub would otherwise get six hub rows and
+	 * nothing else; the point of the page is that each heading is a different
+	 * way of looking at the same session.
+	 */
+	public static function page_rows_per_kind(): array {
+		return (array) apply_filters( 'mavo_for_you_page_rows_per_kind', [
+			'hub'    => 3,
+			'geo'    => 4,
+			'filter' => 5,
+			'search' => 2,
+		] );
+	}
+
+	/** Places per geographic level that may become a row. */
+	public static function page_geo_places_per_level(): int {
+		return (int) apply_filters( 'mavo_for_you_page_geo_places_per_level', 2 );
+	}
+
+	/**
+	 * Rows of ≥ page_row_min() tiles the session must be able to produce
+	 * before the "Pour vous" block links to the page.
+	 *
+	 * Three. The page is a destination, and a destination with one strip on it
+	 * is a disappointment — so the link waits until there is genuinely more to
+	 * see than the block itself already shows.
+	 */
+	public static function page_link_min_rows(): int {
+		return (int) apply_filters( 'mavo_for_you_page_link_min_rows', 3 );
+	}
+
+	/**
+	 * The filters a visitor with no history is shown instead.
+	 *
+	 * Someone arriving cold — a shared link, a crawler, a first-time reader —
+	 * gets rows built from the catalogue rather than from themselves: the
+	 * site's most-read articles under a handful of broad filters. It is not
+	 * personalization and the page says so, but it is a page rather than a
+	 * dead end. Empty means "pick the first few signal slugs", which keeps
+	 * this working on a site whose filter vocabulary this plugin has never
+	 * seen.
+	 *
+	 * @return string[]
+	 */
+	public static function page_fallback_filters(): array {
+		return (array) apply_filters( 'mavo_for_you_page_fallback_filters', [] );
+	}
+
+	/** How many fallback rows a cold visit may show. */
+	public static function page_fallback_rows(): int {
+		return (int) apply_filters( 'mavo_for_you_page_fallback_rows', 4 );
+	}
+
+	/**
+	 * How long a built cold-visit page survives.
+	 *
+	 * The personalized page is never cached anywhere. The fallback has no
+	 * visitor in it at all, so it is the same page for everyone and caching it
+	 * is free; the generation counter retires it on any edit, like every other
+	 * shared pool.
+	 */
+	public static function page_fallback_cache_ttl(): int {
+		return (int) apply_filters( 'mavo_for_you_page_fallback_cache_ttl', 6 * HOUR_IN_SECONDS );
+	}
+
 	/** Languages the block is switched on for. */
 	public static function enabled_langs(): array {
 		$stored = get_option( self::OPTION_ENABLED_LANGS, null );
@@ -572,6 +694,7 @@ class MFY_Config {
 				'reset'    => __( 'Effacer mon historique', 'mavo-for-you' ),
 				'resetHint' => __( 'Efface les articles consultés enregistrés dans votre navigateur.', 'mavo-for-you' ),
 				'resetDone' => __( 'Historique effacé. Les suggestions repartiront de zéro.', 'mavo-for-you' ),
+				'pageLink'  => __( 'Voir toutes vos suggestions', 'mavo-for-you' ),
 			],
 			'en' => [
 				'heading'  => __( 'For you', 'mavo-for-you' ),
@@ -581,6 +704,7 @@ class MFY_Config {
 				'reset'    => __( 'Clear my history', 'mavo-for-you' ),
 				'resetHint' => __( 'Clears the viewed articles stored in your browser.', 'mavo-for-you' ),
 				'resetDone' => __( 'History cleared. Suggestions will start over.', 'mavo-for-you' ),
+				'pageLink'  => __( 'See all your suggestions', 'mavo-for-you' ),
 			],
 			'de' => [
 				'heading'  => __( 'Für Euch', 'mavo-for-you' ),
@@ -590,11 +714,75 @@ class MFY_Config {
 				'reset'    => __( 'Verlauf löschen', 'mavo-for-you' ),
 				'resetHint' => __( 'Löscht die in Eurem Browser gespeicherten angesehenen Artikel.', 'mavo-for-you' ),
 				'resetDone' => __( 'Verlauf gelöscht. Die Vorschläge beginnen von vorn.', 'mavo-for-you' ),
+				'pageLink'  => __( 'Alle Vorschläge ansehen', 'mavo-for-you' ),
 			],
 		];
 
 		return (array) apply_filters(
 			'mavo_for_you_labels',
+			$labels[ $lang ] ?? $labels['en'],
+			$lang
+		);
+	}
+
+	/**
+	 * Strings the /pour-vous/ page needs and the block does not.
+	 *
+	 * Kept apart from labels() so the cached article page does not carry a
+	 * dozen row templates it will never render. The row templates are sprintf
+	 * patterns taking one substitution — a hub title, a place name, a filter
+	 * label, a search query — and they are deliberately written so that no
+	 * French article has to be guessed: "Destination Angleterre" reads, where
+	 * "Plus sur Angleterre" does not.
+	 */
+	public static function page_labels( string $lang ): array {
+		$labels = [
+			'fr' => [
+				'loading'    => __( 'Vos suggestions personnalisées se chargent…', 'mavo-for-you' ),
+				'intro'      => __( 'Suggestions basées sur les articles consultés pendant votre visite sur Maman Voyage.', 'mavo-for-you' ),
+				'rowHub'     => __( 'Dans « %s »', 'mavo-for-you' ),
+				'rowGeo'     => __( 'Destination %s', 'mavo-for-you' ),
+				'rowFilter'  => __( 'Plus d’articles « %s »', 'mavo-for-you' ),
+				'rowSearch'  => __( 'Parce que vous avez cherché « %s »', 'mavo-for-you' ),
+				'rowRecent'  => __( 'Consultés récemment', 'mavo-for-you' ),
+				'coldIntro'  => __( 'Parcourez quelques articles et vos suggestions personnelles apparaîtront ici. En attendant, voici ce que les lecteurs de Maman Voyage consultent le plus.', 'mavo-for-you' ),
+				'empty'      => __( 'Parcourez quelques articles et vos suggestions personnelles apparaîtront ici.', 'mavo-for-you' ),
+				'prev'       => __( 'Précédent', 'mavo-for-you' ),
+				'next'       => __( 'Suivant', 'mavo-for-you' ),
+				'readMark'   => __( 'Déjà lu', 'mavo-for-you' ),
+			],
+			'en' => [
+				'loading'    => __( 'Your personalized suggestions are loading…', 'mavo-for-you' ),
+				'intro'      => __( "Suggestions based on the articles you've viewed during this visit to Maman Voyage.", 'mavo-for-you' ),
+				'rowHub'     => __( 'Inside “%s”', 'mavo-for-you' ),
+				'rowGeo'     => __( 'Destination %s', 'mavo-for-you' ),
+				'rowFilter'  => __( 'More “%s” articles', 'mavo-for-you' ),
+				'rowSearch'  => __( 'Because you searched for “%s”', 'mavo-for-you' ),
+				'rowRecent'  => __( 'Recently viewed', 'mavo-for-you' ),
+				'coldIntro'  => __( 'Read a few articles and your own suggestions will appear here. In the meantime, here is what Maman Voyage readers read most.', 'mavo-for-you' ),
+				'empty'      => __( 'Read a few articles and your own suggestions will appear here.', 'mavo-for-you' ),
+				'prev'       => __( 'Previous', 'mavo-for-you' ),
+				'next'       => __( 'Next', 'mavo-for-you' ),
+				'readMark'   => __( 'Already read', 'mavo-for-you' ),
+			],
+			'de' => [
+				'loading'    => __( 'Eure persönlichen Vorschläge werden geladen…', 'mavo-for-you' ),
+				'intro'      => __( 'Vorschläge auf Basis der Artikel, die Ihr während dieses Besuchs auf Maman Voyage angesehen habt.', 'mavo-for-you' ),
+				'rowHub'     => __( 'In „%s“', 'mavo-for-you' ),
+				'rowGeo'     => __( 'Reiseziel %s', 'mavo-for-you' ),
+				'rowFilter'  => __( 'Mehr Artikel „%s“', 'mavo-for-you' ),
+				'rowSearch'  => __( 'Weil Ihr nach „%s“ gesucht habt', 'mavo-for-you' ),
+				'rowRecent'  => __( 'Kürzlich angesehen', 'mavo-for-you' ),
+				'coldIntro'  => __( 'Lest ein paar Artikel, dann erscheinen hier Eure eigenen Vorschläge. Solange zeigen wir, was die Leserinnen und Leser von Maman Voyage am häufigsten lesen.', 'mavo-for-you' ),
+				'empty'      => __( 'Lest ein paar Artikel, dann erscheinen hier Eure eigenen Vorschläge.', 'mavo-for-you' ),
+				'prev'       => __( 'Zurück', 'mavo-for-you' ),
+				'next'       => __( 'Weiter', 'mavo-for-you' ),
+				'readMark'   => __( 'Schon gelesen', 'mavo-for-you' ),
+			],
+		];
+
+		return (array) apply_filters(
+			'mavo_for_you_page_labels',
 			$labels[ $lang ] ?? $labels['en'],
 			$lang
 		);
