@@ -101,9 +101,14 @@
 }
 
 /*
- * "Recently viewed" is the page's footnote, not one of its suggestions: the
- * reader's own history, last, quieter, with no accent bar claiming it is a
- * recommendation.
+ * "Recently viewed" is the reader's own history rather than a suggestion, but
+ * on this page it is still a section like any other and takes the same heading
+ * treatment — unlike in the block, where §19 asks for it to sit visibly below
+ * the recommendations. A page of equal strips has no top card to sit below.
+ *
+ * The rule above it and the muted accent bar carry what is left of the
+ * distinction: a break, and a heading that is the same size but not the same
+ * colour.
  */
 .mfy-page__row--recent {
 	margin-top: 3em;
@@ -111,13 +116,8 @@
 	border-top: 1px solid var(--mv-color-divider, rgba(0, 0, 0, 0.08));
 }
 
-.mfy-page__row--recent .mfy-page__row-title {
-	font-size: 1em;
-	color: var(--mv-color-subtle, #757575);
-}
-
 .mfy-page__row--recent .mfy-page__row-title::after {
-	display: none;
+	background: var(--mv-color-subtle, #9a9a9a);
 }
 
 /* ----- Arrows ------------------------------------------------------------ */
@@ -223,4 +223,27 @@
 	.mfy-page__slide {
 		flex-basis: 260px;
 	}
+}
+
+/* ----- Clearing the history ---------------------------------------------- */
+
+/*
+ * The block's own footer treatment (.mfy__footer / .mfy__reset, from
+ * mavo-for-you.css) with one addition: the hint is printed, not just left in a
+ * title attribute. On the block the consequence of clicking is visible
+ * immediately and reversible by reading two more articles; here it navigates
+ * away, so the reader is told before rather than after.
+ */
+.mfy-page__footer {
+	margin-top: 2.5em;
+	padding-top: 1.5em;
+	border-top: 1px solid var(--mv-color-divider, rgba(0, 0, 0, 0.08));
+	text-align: right;
+}
+
+.mfy-page__reset-hint {
+	margin: 0.4em 0 0;
+	font-size: 0.75em;
+	line-height: 1.45;
+	color: var(--mv-color-subtle, #757575);
 }

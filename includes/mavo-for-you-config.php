@@ -561,6 +561,19 @@ class MFY_Config {
 	}
 
 	/**
+	 * Keep the suggestions page out of the index.
+	 *
+	 * Its useful state exists only for a returning reader and is built in the
+	 * browser, so what a crawler can actually see is the cold fallback: a
+	 * generic list of popular articles that competes with the site's real hub
+	 * pages and says nothing they do not say better. The links on it stay
+	 * followable — it is the page that should not rank, not the articles.
+	 */
+	public static function page_noindex(): bool {
+		return (bool) apply_filters( 'mavo_for_you_page_noindex', true );
+	}
+
+	/**
 	 * Tiles fetched per row.
 	 *
 	 * Twelve is roughly three screens' worth of a carousel on a desktop and a
@@ -750,6 +763,8 @@ class MFY_Config {
 				'prev'       => __( 'Précédent', 'mavo-for-you' ),
 				'next'       => __( 'Suivant', 'mavo-for-you' ),
 				'readMark'   => __( 'Déjà lu', 'mavo-for-you' ),
+				'reset'      => __( 'Effacer mon historique', 'mavo-for-you' ),
+				'resetHint'  => __( 'Efface les articles consultés enregistrés dans votre navigateur. Cette page n’aura alors plus rien à suggérer : vous serez ramené à l’accueil.', 'mavo-for-you' ),
 			],
 			'en' => [
 				'loading'    => __( 'Your personalized suggestions are loading…', 'mavo-for-you' ),
@@ -764,6 +779,8 @@ class MFY_Config {
 				'prev'       => __( 'Previous', 'mavo-for-you' ),
 				'next'       => __( 'Next', 'mavo-for-you' ),
 				'readMark'   => __( 'Already read', 'mavo-for-you' ),
+				'reset'      => __( 'Clear my history', 'mavo-for-you' ),
+				'resetHint'  => __( 'Clears the viewed articles stored in your browser. This page will then have nothing left to suggest, so you will be taken back to the home page.', 'mavo-for-you' ),
 			],
 			'de' => [
 				'loading'    => __( 'Eure persönlichen Vorschläge werden geladen…', 'mavo-for-you' ),
@@ -778,6 +795,8 @@ class MFY_Config {
 				'prev'       => __( 'Zurück', 'mavo-for-you' ),
 				'next'       => __( 'Weiter', 'mavo-for-you' ),
 				'readMark'   => __( 'Schon gelesen', 'mavo-for-you' ),
+				'reset'      => __( 'Verlauf löschen', 'mavo-for-you' ),
+				'resetHint'  => __( 'Löscht die in Eurem Browser gespeicherten angesehenen Artikel. Diese Seite hat dann nichts mehr vorzuschlagen — Ihr landet wieder auf der Startseite.', 'mavo-for-you' ),
 			],
 		];
 

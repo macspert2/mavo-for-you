@@ -115,6 +115,13 @@
 			}
 		});
 
+		// Only on a page built from a history there is something to clear. The
+		// cold fallback has none, and offering to erase nothing would be a
+		// control that does nothing.
+		if (data.personalized) {
+			section.appendChild(resetControl());
+		}
+
 		host.innerHTML = '';
 		host.appendChild(section);
 
@@ -174,6 +181,41 @@
 		});
 
 		return section;
+	}
+
+	/**
+	 * Clearing the history, and leaving.
+	 *
+	 * The same quiet text button the block carries, in the same markup, so it
+	 * is recognisably the same control — but it cannot behave the same way.
+	 * The block can put itself back to what an anonymous visitor would see;
+	 * this page *is* the history, and with the history gone it would silently
+	 * become the cold fallback under the reader, which reads as a bug rather
+	 * than as confirmation. So it leaves for the home page instead, and the
+	 * hint says so before the click rather than after it.
+	 */
+	function resetControl() {
+		var footer = el('div', 'mfy__footer mfy-page__footer');
+		var button = el('button', 'mfy__reset', labels.reset || 'Reset');
+
+		button.type = 'button';
+
+		if (labels.resetHint) {
+			button.title = labels.resetHint;
+			footer.appendChild(el('p', 'mfy-page__reset-hint', labels.resetHint));
+		}
+
+		button.addEventListener('click', function () {
+			api.reset();
+
+			// replace(), not href: the page behind this one no longer exists
+			// in any meaningful sense, so Back should not return to it.
+			window.location.replace(cfg.homeUrl || '/');
+		});
+
+		footer.insertBefore(button, footer.firstChild);
+
+		return footer;
 	}
 
 	// -------------------------------------------------------------------------

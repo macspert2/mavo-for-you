@@ -801,12 +801,14 @@
 	}
 
 	/**
-	 * The link on to /pour-vous/, when the server says the session can fill
+	 * The way on to /pour-vous/, when the server says the session can fill
 	 * that page.
 	 *
-	 * An ordinary crawlable link, like every other link this plugin emits. It
-	 * sits above the reset control and below the suggestions, where it reads
-	 * as "there is more of this" rather than as a call to action.
+	 * Still an ordinary crawlable <a> — the styling is a button, the element
+	 * is not, because this navigates. It is the site's tier-two treatment
+	 * (warm outline), never tier one: the primary weight on an article page
+	 * belongs to that page's own actions, not to a link out of the sidebar of
+	 * suggestions.
 	 */
 	function moreLink(page) {
 		var wrap = el('p', 'mfy__more');
@@ -817,6 +819,7 @@
 
 		return wrap;
 	}
+
 
 	/**
 	 * The way out: a quiet text button, last thing in the block.
@@ -894,7 +897,8 @@
 		trim: trim,
 		markRead: function () {
 			markReadLinks(loadProfile());
-		}
+		},
+		reset: resetProfile
 	};
 
 	// -------------------------------------------------------------------------

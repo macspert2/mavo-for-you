@@ -28,6 +28,17 @@ class WP_REST_Response {
 	public function __construct( $data, $status ) { $this->data = $data; $this->status = $status; }
 	public function header( $k, $v ) { $this->headers[ $k ] = $v; }
 }
+
+// --- Query stubs, for the robots tag ----------------------------------------
+$GLOBALS['MOCK_QUERY'] = [ 'is_singular' => true, 'queried' => 0 ];
+function is_singular( $types = [] ) {
+	if ( ! $GLOBALS['MOCK_QUERY']['is_singular'] ) { return false; }
+	$post = get_post( $GLOBALS['MOCK_QUERY']['queried'] );
+	return $post && ( ! $types || in_array( $post->post_type, (array) $types, true ) );
+}
+function get_queried_object() { return get_post( $GLOBALS['MOCK_QUERY']['queried'] ); }
+function get_queried_object_id() { return (int) $GLOBALS['MOCK_QUERY']['queried']; }
+
 require_once __DIR__ . '/../includes/class-mavo-for-you-rest.php';
 
 $t = time();
@@ -157,6 +168,51 @@ check( 'it carries a loading line for the wait', str_contains( $html, 'mfy-page_
 check( 'and a noscript fallback that hides it', str_contains( $html, '<noscript>' ) && str_contains( $html, 'mfy-page__empty' ) );
 check( 'no suggestion is baked into the cached page',
 	! preg_match( '/mv-tile|data-mavo-post-id/', $html ), $html );
+
+// --- 9. The page stays out of the index -------------------------------------
+
+// is_page() decides it, off the queried object.
+$GLOBALS['MOCK_QUERY']['queried'] = 900;
+
+$core = MFY_Page::robots( [ 'index' => true, 'max-image-preview' => 'large' ] );
+
+check( 'the suggestions page is noindex', ! empty( $core['noindex'] ), json_encode( $core ) );
+check( 'and no longer claims to be indexable', ! isset( $core['index'] ), json_encode( $core ) );
+check( 'but its links stay followable', ! empty( $core['follow'] ), json_encode( $core ) );
+
+$yoast = MFY_Page::seo_plugin_robots( [ 'index' => 'index', 'follow' => 'follow' ] );
+check( 'an SEO plugin printing its own tag is corrected too', 'noindex' === $yoast['index'], json_encode( $yoast ) );
+check( 'and its follow value is left alone', 'follow' === $yoast['follow'], json_encode( $yoast ) );
+
+$GLOBALS['MOCK_QUERY']['queried'] = 201;
+
+$article = MFY_Page::robots( [ 'index' => true ] );
+check( 'an ordinary article is left indexable', ! isset( $article['noindex'] ) && ! empty( $article['index'] ), json_encode( $article ) );
+check( 'and so is its SEO-plugin tag', 'index' === MFY_Page::seo_plugin_robots( [ 'index' => 'index' ] )['index'] );
+
+$GLOBALS['MOCK_QUERY']['queried'] = 900;
+
+// --- 10. The page's own copy ------------------------------------------------
+
+foreach ( [ 'fr', 'en', 'de' ] as $lang ) {
+	$labels = MFY_Config::page_labels( $lang );
+
+	check( sprintf( '[%s] every row template and control has copy', $lang ),
+		! array_filter(
+			[ 'loading', 'intro', 'coldIntro', 'empty', 'rowHub', 'rowGeo', 'rowFilter', 'rowSearch', 'rowRecent', 'prev', 'next', 'reset', 'resetHint' ],
+			fn( $key ) => empty( $labels[ $key ] )
+		) );
+
+	foreach ( [ 'rowHub', 'rowGeo', 'rowFilter', 'rowSearch' ] as $template ) {
+		check( sprintf( '[%s] %s takes exactly one substitution', $lang, $template ),
+			1 === substr_count( $labels[ $template ], '%s' ),
+			$labels[ $template ] );
+	}
+
+	check( sprintf( '[%s] the reset hint warns that the page will be left', $lang ),
+		mb_strlen( $labels['resetHint'] ) > mb_strlen( $labels['reset'] ),
+		$labels['resetHint'] );
+}
 
 echo "\n";
 printf( "%d failure(s)\n", $GLOBALS['FAILED'] );

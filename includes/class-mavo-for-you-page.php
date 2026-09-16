@@ -39,6 +39,56 @@ class MFY_Page {
 		// a transient.
 		add_action( 'save_post_page', [ __CLASS__, 'forget_page_ids' ] );
 		add_action( 'deleted_post', [ __CLASS__, 'forget_page_ids' ] );
+
+		// Core, then the two SEO plugins that print their own robots tag
+		// instead. Whichever is active wins; filters for absent plugins simply
+		// never fire, so all three can be registered unconditionally.
+		add_filter( 'wp_robots', [ __CLASS__, 'robots' ] );
+		add_filter( 'wpseo_robots_array', [ __CLASS__, 'seo_plugin_robots' ] );
+		add_filter( 'rank_math/frontend/robots', [ __CLASS__, 'seo_plugin_robots' ] );
+	}
+
+	// -------------------------------------------------------------------------
+	// Indexing
+	// -------------------------------------------------------------------------
+
+	/** Should this request carry a noindex? */
+	private static function noindex(): bool {
+		return self::is_page() && MFY_Config::page_noindex();
+	}
+
+	/**
+	 * Core's robots tag (WordPress 5.7+).
+	 *
+	 * noindex, but deliberately not nofollow: the recommendations arrive after
+	 * load and are not an internal-linking mechanism, yet the few links the
+	 * page does carry are ordinary ones and there is no reason to tell a
+	 * crawler to ignore them.
+	 */
+	public static function robots( $robots ) {
+		if ( ! is_array( $robots ) || ! self::noindex() ) {
+			return $robots;
+		}
+
+		unset( $robots['index'] );
+		$robots['noindex'] = true;
+		$robots['follow']  = true;
+
+		return $robots;
+	}
+
+	/**
+	 * Yoast's `wpseo_robots_array` and Rank Math's `rank_math/frontend/robots`
+	 * happen to take the same shape: [ 'index' => 'index', 'follow' => … ].
+	 */
+	public static function seo_plugin_robots( $robots ) {
+		if ( ! is_array( $robots ) || ! self::noindex() ) {
+			return $robots;
+		}
+
+		$robots['index'] = 'noindex';
+
+		return $robots;
 	}
 
 	// -------------------------------------------------------------------------
@@ -297,7 +347,28 @@ class MFY_Page {
 			'pageId'   => (int) get_queried_object_id(),
 			'labels'   => MFY_Config::page_labels( $lang ),
 			'rowMin'   => MFY_Config::page_row_min(),
+			'homeUrl'  => self::home_url( $lang ),
 		];
+	}
+
+	/**
+	 * Where clearing the history sends the reader.
+	 *
+	 * The home page of their own language — this page is built entirely from
+	 * the history that has just been deleted, so staying on it would mean
+	 * watching it turn into the cold fallback under them. The front page is
+	 * the one destination that is never wrong.
+	 */
+	private static function home_url( string $lang ): string {
+		if ( function_exists( 'pll_home_url' ) ) {
+			$url = (string) pll_home_url( $lang );
+
+			if ( '' !== $url ) {
+				return $url;
+			}
+		}
+
+		return home_url( '/' );
 	}
 
 	private static function asset_version( string $relative ): string {

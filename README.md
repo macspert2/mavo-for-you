@@ -112,6 +112,12 @@ Row kinds, in the order they appear (`MFY_Rows::KIND_ORDER`):
 | `filter` | *Plus d'articles « … »* | articles scoring 2 on a filter the session scores 2 on |
 | `recent` | *Consultés récemment* | the visitor's own history, always last |
 
+Every heading is an `<h2>`, "Consultés récemment" included, and on this page it takes
+the same size and weight as the rest: §19's "visually subordinate" is a rule about the
+block, where it sits below the recommendation cards, and a page of equal strips has no
+top card for it to sit below. A rule above it and a muted accent bar carry what remains
+of the distinction.
+
 Search leads because a query is the visitor stating in their own words what they came
 for, and nothing the plugin infers outranks that. Hubs come next — an editor's statement
 about what belongs together — then geography, then themes, which is the most abstract of
@@ -137,10 +143,37 @@ guessed: `MFY_Rows::count_available()` assembles the rows for real and stops bef
 hydrating them into post objects, which is why that check costs pool queries and not a
 hundred `get_post()` calls.
 
+It is styled as the site's **tier-two button** — warm outline, filling on hover, with
+the same slight rotation the live buttons use — never tier one, because the primary
+weight on an article page belongs to that page's own actions. The element stays an
+ordinary crawlable `<a>`; only the styling is a button. Those styles are written out in
+`mavo-for-you.css` rather than borrowed from the child theme's `.btn` / `.mv-btn-2`: the
+block is injected after load into pages this plugin does not control, and a
+half-applied theme button would look broken where a self-contained one cannot. Swapping
+the classes in `moreLink()` is the one-line change if the theme's own set should win.
+
+**Clearing the history, from the page.** The same quiet control the block carries, with
+one difference it cannot avoid. The block can put itself back to what an anonymous
+visitor would see; this page *is* the history, so with the history gone it would turn
+into the cold fallback under the reader — which reads as a bug rather than as
+confirmation. It navigates to the language's home page instead (`pll_home_url()`, else
+`home_url()`), via `location.replace()` so Back does not return to a page that no
+longer means anything. The hint says so before the click rather than after it, and the
+control only appears on a personalized page, since a cold one has nothing to clear.
+
 **A cold visit** — a shared link, a crawler, a first-time reader — gets rows built from
 the catalogue instead: the most-read articles under a few broad filters. The page says
 so in its own copy rather than claiming to be personalized, and because there is no
 visitor in it, it is the one part of this feature that is cached.
+
+**Indexing.** The page carries `noindex, follow`. Its useful state exists only for a
+returning reader and is built in the browser, so what a crawler can actually see is the
+cold fallback — a generic list of popular articles that competes with the site's real
+hub pages and says nothing they do not say better. The links stay followable: it is the
+page that should not rank, not the articles on it. Core's `wp_robots` carries it, and
+Yoast's `wpseo_robots_array` and Rank Math's `rank_math/frontend/robots` are filtered
+too, since either plugin prints its own tag instead of core's. Off with
+`mavo_for_you_page_noindex`.
 
 **Caching.** Exactly the block's arrangement, for exactly the block's reason. The
 shortcode emits a placeholder and one line of loading copy — no post ID beyond the
@@ -529,7 +562,7 @@ The /pour-vous/ page: `mavo_for_you_page_langs`, `mavo_for_you_page_slugs`,
 `mavo_for_you_page_geo_places_per_level`, `mavo_for_you_page_link_min_rows`,
 `mavo_for_you_page_fallback_filters`, `mavo_for_you_page_fallback_rows`,
 `mavo_for_you_page_fallback_cache_ttl`, `mavo_for_you_page_labels`,
-`mavo_for_you_page_placeholder_html`.
+`mavo_for_you_page_noindex`, `mavo_for_you_page_placeholder_html`.
 
 Already read: `mavo_for_you_mark_read`, `mavo_for_you_mark_read_everywhere`,
 `mavo_for_you_mark_read_selectors`.
@@ -581,8 +614,9 @@ npm.
   should be suggested.
 - With JS off: page fully usable, no gap, no block.
 - Read enough for three rows: the block should gain a "Voir toutes vos suggestions"
-  link. Read only two articles about one place: no link, because the page behind it
-  would be one strip.
+  button — outlined, not solid, and it should not out-shout the page's own actions.
+  Read only two articles about one place: no button, because the page behind it would
+  be one strip.
 - On /pour-vous/: rows appear under their own headings, articles already read are dimmed
   with a check, "Consultés récemment" is last and quieter.
 - Narrow the window until a strip overflows: the arrows appear. Widen it until it fits:
@@ -590,7 +624,11 @@ npm.
 - Open /pour-vous/ in a fresh private window: rows from the catalogue, and copy that
   does not claim they are personal.
 - View the source of /pour-vous/ with JS off: one placeholder, one line of copy, no
-  tiles and no post IDs.
+  tiles and no post IDs — and `<meta name="robots" content="noindex, follow">`. If an
+  SEO plugin is active, check there is only one robots tag and that it says noindex.
+- Click "Effacer mon historique" at the foot of /pour-vous/: the history goes and the
+  browser lands on the French home page, with Back not returning to the stale page.
+  Open /pour-vous/ again: the cold fallback, and no reset control on it.
 - Compare the cached HTML of two anonymous visitors: byte-identical, placeholder empty.
 - Recommendation and recently-viewed links carry `data-mavo-post-id`.
 - Click "Clear my history" on a plain post: the block goes, leaving one line of
