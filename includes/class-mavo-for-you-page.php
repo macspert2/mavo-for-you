@@ -129,12 +129,31 @@ class MFY_Page {
 		if ( '' !== $slug ) {
 			$page  = get_page_by_path( $slug, OBJECT, 'page' );
 			$found = $page instanceof WP_Post ? self::validate( $page->ID, $lang ) : 0;
+		}
 
-			// Polylang gives each translation its own slug, but a site may
-			// have kept one: ask Polylang for this language's version too.
-			if ( ! $found && $page instanceof WP_Post && function_exists( 'pll_get_post' ) ) {
-				$translated = (int) pll_get_post( $page->ID, $lang );
+		// Failing that, ask Polylang. The configured slugs are a guess at what
+		// an editor called the page; the translation relationship is a fact
+		// they stated. So any language's page that *can* be found becomes the
+		// seed, and this language's version is whatever Polylang links to it —
+		// which is what makes the English and German pages reachable without
+		// anyone having to match the slug list.
+		if ( ! $found && function_exists( 'pll_get_post' ) ) {
+			foreach ( $slugs as $other_lang => $other_slug ) {
+				if ( $other_lang === $lang || '' === (string) $other_slug ) {
+					continue;
+				}
+
+				$seed = get_page_by_path( (string) $other_slug, OBJECT, 'page' );
+				if ( ! $seed instanceof WP_Post ) {
+					continue;
+				}
+
+				$translated = (int) pll_get_post( $seed->ID, $lang );
 				$found      = $translated ? self::validate( $translated, $lang ) : 0;
+
+				if ( $found ) {
+					break;
+				}
 			}
 		}
 

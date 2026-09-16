@@ -81,9 +81,17 @@ A page of its own, created by hand in WordPress with one shortcode in it:
 [mavo_for_you_page]
 ```
 
-French only for now (`mavo_for_you_page_langs`), at the slug `pour-vous`
-(`mavo_for_you_page_slugs`). The plugin finds the page by that slug, so nothing has to
-be registered anywhere; `mavo_for_you_page_id` overrides the lookup if a site needs it.
+One page per language — `pour-vous`, `for-you`, `fuer-euch`
+(`mavo_for_you_page_slugs`). Nothing has to be registered anywhere: the plugin finds the
+page by that slug, and failing that asks **Polylang** for the translation of whichever
+language's page it *can* find, so a page an editor gave a slug of their own is still
+reachable. `mavo_for_you_page_id` overrides the lookup outright.
+
+A language is offered the page whenever it has one — `mavo_for_you_page_langs` defaults
+to the site's languages and exists to switch a language's button off without deleting
+its page. It was a hard-coded `['fr']` while the page was French-only, which is why the
+English and German pages worked from the day they were created (the shortcode never
+consulted it) while nothing linked to them.
 
 The block answers a hard question — of everything on the site, which *three* articles
 does this reader most want next? — by merging every signal into one number. That merge
@@ -689,8 +697,9 @@ npm.
   "Consultés récemment" (marked), never as a suggestion — and its other children
   should be suggested.
 - With JS off: page fully usable, no gap, no block.
-- Read enough for three rows: the block should gain a "Voir toutes vos suggestions"
-  button — outlined, not solid, and it should not out-shout the page's own actions.
+- Do this in each of FR / EN / DE: read enough for three rows and the block should gain
+  a "Voir toutes vos suggestions" / "See all your suggestions" / "Alle Vorschläge
+  ansehen" button — outlined, not solid, and it should not out-shout the page's own actions.
   Read only two articles about one place: no button, because the page behind it would
   be one strip.
 - On /pour-vous/: rows appear under their own headings, articles already read carry a

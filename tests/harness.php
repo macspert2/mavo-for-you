@@ -18,6 +18,7 @@ $GLOBALS['MOCK_CURRENT_POST'] = 0;
 $GLOBALS['MOCK_HUB_TYPE'] = [];    // post_id  => 'geo'|'theme'
 $GLOBALS['MOCK_PRIMARY_HUB'] = []; // post_id  => [type => hub post_id]
 $GLOBALS['MOCK_META'] = [];        // post_id  => [meta_key => value]
+$GLOBALS['MOCK_TRANSLATIONS'] = []; // post_id => translation group id
 
 function apply_filters( $tag, $value ) { return $value; }
 function absint( $v ) { return abs( (int) $v ); }
@@ -75,6 +76,18 @@ function get_post( $id ) {
 	return $p;
 }
 function pll_get_post_language( $id, $field = 'slug' ) { return $GLOBALS['MOCK_POSTS'][ (int) $id ]['lang'] ?? ''; }
+
+/** Polylang's translation map: a group id shared by every translation. */
+function pll_get_post( $id, $lang ) {
+	$group = $GLOBALS['MOCK_TRANSLATIONS'][ (int) $id ] ?? null;
+	if ( null === $group ) { return 0; }
+	foreach ( $GLOBALS['MOCK_TRANSLATIONS'] as $other => $other_group ) {
+		if ( $other_group === $group && ( $GLOBALS['MOCK_POSTS'][ $other ]['lang'] ?? '' ) === $lang ) {
+			return (int) $other;
+		}
+	}
+	return 0;
+}
 function delete_transient( $k ) { unset( $GLOBALS['MOCK_TRANSIENTS'][ $k ] ); return true; }
 
 /** MFY_Page resolves /pour-vous/ by slug; the fixture is the page table. */
@@ -407,6 +420,13 @@ function mock_excerpt( int $post_id, string $excerpt ): void {
 
 function mock_meta( int $post_id, string $key, string $value ): void {
 	$GLOBALS['MOCK_META'][ $post_id ][ $key ] = $value;
+}
+
+/** Links posts as translations of one another, the way Polylang does. */
+function mock_translations( array $post_ids ): void {
+	$group = min( $post_ids );
+	foreach ( $post_ids as $id ) { $GLOBALS['MOCK_TRANSLATIONS'][ (int) $id ] = $group; }
+	mock_bust();
 }
 
 /** Creates the suggestions page a language links to, at its configured slug. */

@@ -540,15 +540,21 @@ class MFY_Config {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Languages the standalone suggestions page exists in.
+	 * Languages whose readers may be offered the standalone suggestions page.
 	 *
-	 * French only for now — the page is written by hand, and a link pointing
-	 * at a page that does not exist in the reader's language is worse than no
-	 * link at all. Adding a language here is a one-line change once its page
-	 * exists; MFY_Page still verifies that it does before linking to it.
+	 * Every language the site has, because the guard that matters is not this
+	 * list but MFY_Page::available(), which checks that the page actually
+	 * exists in that language before anything links to it. A language with no
+	 * page simply never shows the button, with no configuration needed.
+	 *
+	 * This began as a hard-coded ['fr'] while the page was French-only, which
+	 * is why the English and German pages worked — the shortcode never
+	 * consulted this — while the button to reach them did not appear. Narrow
+	 * it again with the filter to switch a language's button off without
+	 * deleting its page.
 	 */
 	public static function page_langs(): array {
-		return (array) apply_filters( 'mavo_for_you_page_langs', [ 'fr' ] );
+		return (array) apply_filters( 'mavo_for_you_page_langs', self::site_langs() );
 	}
 
 	/** The page's slug, per language. */

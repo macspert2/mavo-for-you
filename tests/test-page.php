@@ -169,6 +169,85 @@ check( 'and a noscript fallback that hides it', str_contains( $html, '<noscript>
 check( 'no suggestion is baked into the cached page',
 	! preg_match( '/mv-tile|data-mavo-post-id/', $html ), $html );
 
+// --- 8b. Every language with a page of its own gets the button --------------
+//
+// The English and German pages worked from the day they were created — the
+// shortcode never consulted a language list — but nothing linked to them,
+// because page_langs() was still the hard-coded ['fr'] from when the page was
+// French-only. The list now follows the site's languages, and the guard that
+// matters is whether the page exists.
+
+// The same shape as the French fixture, in each language: a guide with
+// children, other articles in the same city, and a theme that reaches beyond
+// it — enough for the three rows the button requires.
+function mock_language_fixture( string $lang, int $base, string $guide ): void {
+	mock_post( $base, $guide, $lang, [], 'publish', 'page' );
+	mock_hub( $base, 'geo' );
+
+	foreach ( range( 1, 5 ) as $i ) {
+		mock_post( $base + $i, $guide . ' — child ' . $i, $lang, [ 'citytrip' => 2 ] );
+		mock_primary_hub( $base + $i, $base, 'geo' );
+		mock_geo( $base + $i, [ 'city' => 11, 'country' => 22 ] );
+	}
+
+	foreach ( range( 6, 8 ) as $i ) {
+		mock_post( $base + $i, $guide . ' — city ' . $i, $lang, [ 'gastronomie' => 2 ] );
+		mock_geo( $base + $i, [ 'city' => 11, 'country' => 22 ] );
+	}
+
+	foreach ( range( 10, 15 ) as $i ) {
+		mock_post( $base + $i, $guide . ' — elsewhere ' . $i, $lang, [ 'citytrip' => 2, 'ados' => 2 ] );
+	}
+}
+
+mock_language_fixture( 'en', 1000, 'London with children' );
+mock_language_fixture( 'de', 2000, 'London mit Kindern' );
+
+// The English page at its configured slug; the German one at a slug of the
+// editor's own choosing, linked to the French page as a translation.
+mock_suggestions_page( 910, 'en', 'for-you' );
+mock_suggestions_page( 920, 'de', 'unsere-vorschlaege' );
+mock_translations( [ 900, 910, 920 ] );
+MFY_Page::forget_page_ids();
+
+check( 'the English page is found by its configured slug', 910 === MFY_Page::page_id( 'en' ) );
+check( 'the German page is found through Polylang despite an unlisted slug',
+	920 === MFY_Page::page_id( 'de' ), (string) MFY_Page::page_id( 'de' ) );
+check( 'both languages are now offered the page',
+	MFY_Page::available( 'en' ) && MFY_Page::available( 'de' ) );
+
+$en_views = [
+	[ 'post_id' => 1001, 'duration_seconds' => 120, 'max_scroll_pct' => 80, 'last_seen' => $t ],
+	[ 'post_id' => 1002, 'duration_seconds' => 90,  'max_scroll_pct' => 70, 'last_seen' => $t - 300 ],
+];
+$de_views = [
+	[ 'post_id' => 2001, 'duration_seconds' => 120, 'max_scroll_pct' => 80, 'last_seen' => $t ],
+	[ 'post_id' => 2002, 'duration_seconds' => 90,  'max_scroll_pct' => 70, 'last_seen' => $t - 300 ],
+];
+
+$en = call( [ 'current_post_id' => 1001, 'views' => $en_views ] );
+$de = call( [ 'current_post_id' => 2001, 'views' => $de_views ] );
+
+check( 'an English block offers the English page',
+	( $en->data['page']['url'] ?? '' ) === get_permalink( 910 ), json_encode( $en->data['page'] ?? null ) );
+check( 'with the English label', 'See all your suggestions' === ( $en->data['page']['label'] ?? '' ), $en->data['page']['label'] ?? '—' );
+
+check( 'a German block offers the German page',
+	( $de->data['page']['url'] ?? '' ) === get_permalink( 920 ), json_encode( $de->data['page'] ?? null ) );
+check( 'with the German label', 'Alle Vorschläge ansehen' === ( $de->data['page']['label'] ?? '' ), $de->data['page']['label'] ?? '—' );
+
+check( 'and the French block still offers the French page',
+	( call( [ 'current_post_id' => 201, 'views' => $views ] )->data['page']['url'] ?? '' ) === get_permalink( 900 ) );
+
+// Each language's endpoint answers for its own page only.
+$en_page = call_page( [ 'page_id' => 910, 'views' => $en_views ] );
+check( 'the English page endpoint answers in English', 'en' === $en_page->data['lang'] && ! empty( $en_page->data['rows'] ) );
+check( 'and never mixes in another language’s articles',
+	! array_filter( $en_page->data['rows'], fn( $row ) => (bool) array_filter(
+		$row['items'],
+		fn( $item ) => 'en' !== MFY_Data::post_lang( $item['post_id'] )
+	) ) );
+
 // --- 9. The page stays out of the index -------------------------------------
 
 // is_page() decides it, off the queried object.
