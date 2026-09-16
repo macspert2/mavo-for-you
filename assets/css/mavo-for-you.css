@@ -195,12 +195,29 @@
  * not control, and a half-applied theme button would look broken where a
  * self-contained one cannot. Swap the classes in moreLink() if the theme's
  * own button set should win instead.
+ *
+ * Every rule below is scoped under .mfy and spells out :link / :visited, and
+ * that is not tidiness — it is the whole reason the button works.
+ *
+ * This block is injected *inside* the article, so the theme's content-link
+ * styles (mv-custom.css) apply to it like any other link in the prose. Those
+ * rules look like `.entry-content a:hover` — specificity 0,2,1 — and a plain
+ * `.mfy__more-link:hover` is 0,1,0, so the theme won the colour while this
+ * file kept the background, which is exactly how you get brown text on a
+ * brown fill. `.mfy .mfy__more-link:hover` is 0,3,0 and wins on the class
+ * column. :link and :visited matter for the same reason: a theme that colours
+ * visited links would otherwise repaint a button someone has already used.
+ *
+ * So: never lower the specificity here, and never add a colour to this button
+ * without giving it the same scoping.
  */
 .mfy__more {
 	margin: 1.4em 0 0;
 }
 
-.mfy__more-link {
+.mfy .mfy__more-link,
+.mfy .mfy__more-link:link,
+.mfy .mfy__more-link:visited {
 	display: inline-block;
 	padding: 0.6em 1.3em;
 	border: 2px solid var(--mv-color-accent, #886353);
@@ -211,38 +228,48 @@
 	font-weight: 600;
 	line-height: 1.3;
 	text-decoration: none;
+	box-shadow: none;
 	transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
-.mfy__more-link::after {
+.mfy .mfy__more-link::after {
 	content: " \2192";
 }
 
-.mfy__more-link:hover,
-.mfy__more-link:focus-visible {
+.mfy .mfy__more-link:hover,
+.mfy .mfy__more-link:focus,
+.mfy .mfy__more-link:focus-visible,
+.mfy .mfy__more-link:active {
 	background: var(--mv-color-accent, #886353);
+	/* Not a token: whatever --mv-color-accent is, this text sits on it. */
 	color: #fff;
+	border-color: var(--mv-color-accent, #886353);
+	text-decoration: none;
+}
+
+.mfy .mfy__more-link:hover,
+.mfy .mfy__more-link:focus-visible {
 	transform: rotate(-1deg);
 }
 
-.mfy__more-link:active {
+.mfy .mfy__more-link:active {
 	transform: rotate(0.4deg) scale(0.98);
 }
 
-.mfy__more-link:focus-visible {
+.mfy .mfy__more-link:focus-visible {
 	outline: 2px solid var(--mv-color-highlight, #a92d87);
 	outline-offset: 3px;
 }
 
 /* The rotation is charm on a chip and breakage on a full-width control. */
 @media (prefers-reduced-motion: reduce) {
-	.mfy__more-link {
+	.mfy .mfy__more-link {
 		transition: none;
 	}
 
-	.mfy__more-link:hover,
-	.mfy__more-link:focus-visible,
-	.mfy__more-link:active {
+	.mfy .mfy__more-link:hover,
+	.mfy .mfy__more-link:focus-visible,
+	.mfy .mfy__more-link:active {
 		transform: none;
 	}
 }
