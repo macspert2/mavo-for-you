@@ -128,11 +128,29 @@ Three rules shape what a reader actually sees:
 - **Four tiles or no row.** A strip of three does not rotate, and a heading over three
   articles promises a category the site cannot fill. `mavo_for_you_page_row_min`.
   "Consultés récemment" is the one exception: it promises no category, so two is fine.
-- **Repetition between rows is the point.** An article can be both *in the London guide*
-  and *a city break with teenagers*; hiding one of those to avoid repeating a thumbnail
-  would make the headings lie. Within a row, of course, once. A row whose every tile
-  already appeared in one earlier row is dropped — two headings over one set of articles
-  reads as a bug however true both are.
+- **Repetition between rows is the point — repetition of a *subject* is not.** An
+  article can be both *in the London guide* and *a city break with teenagers*; hiding one
+  of those to avoid repeating a thumbnail would make the headings lie. Within a row, of
+  course, once. But two headings naming the same thing is a stutter, not a viewpoint, and
+  two rules catch it:
+  - A row whose every tile already appeared in one earlier row is dropped.
+  - A **hub row whose title is exactly a place name stands down** for that place's
+    geography row — *"Dans « Angleterre »"* directly above *"Destination Angleterre"*
+    was the live symptom. The geography row wins because it is the more complete answer:
+    every article tagged with the place, which in practice includes the hub's children
+    and more. What is lost is the hub's editorial ordering, which is smaller than a
+    duplicated heading.
+
+    The match is on the **whole title**, lowercased and accent-folded, and the hub's own
+    geo tags are not consulted at all. "Angleterre" stands down; "Angleterre en famille"
+    does not, and neither does "Londres en famille" beside a *Destination Londres* row —
+    a curated guide with a name of its own is a different promise from everything tagged
+    with a city, and two headings that read differently may coexist. Thematic hubs are
+    never suppressed: a theme is not a destination, whatever it is called.
+
+    An earlier version compared the hub's own most-specific geo tag with the row's place.
+    It is the more principled notion of "same subject" and the worse rule to live with —
+    it swallowed every named guide the moment its city earned a row.
 - **Already-read articles stay.** The block is about what is next; the page is about the
   territory. They carry the same `data-mavo-post-id` as every other tile, so the
   existing read-marking pass dims them with no extra code.
@@ -200,6 +218,19 @@ Only three of the six tvf categories carry the signal: **intérêt**, **géograp
 and **âge des enfants**. Saison / durée / budget describe trip logistics, are scored
 broadly across the catalogue, and would flatten the ranking rather than sharpen it.
 Change the set with the `mavo_for_you_signal_categories` filter.
+
+**Filter labels are resolved per language.** Travel Finder stores every label as a
+language-keyed array and resolves it on request, falling back to French for anything not
+yet translated — so `MFY_Data::signal_labels()` takes a **required** `$lang`. Required,
+not defaulted, because `tvf_get_slug_labels()` itself defaults to `'fr'`: this plugin
+asked for French labels in every language and got them without a word of complaint, and
+a German reader saw *"Plus d'articles « Séjour en ville »"* as a row heading on
+`/pour-vous/`. A required argument is the only version of this that cannot fail
+silently. `tests/test-rows.php` asserts the EN and DE headings, and that an untranslated
+slug still falls back to French rather than losing its row.
+
+Slugs are *not* language-dependent — `signal_slugs()` reads only the registry's keys, so
+it takes no language and needs none.
 
 ### Geography
 
@@ -628,6 +659,7 @@ php tests/test-hub-children.php  # sibling candidates, eligibility, bounded pool
 php tests/test-no-hubs.php       # every hub feature off when Hub Manager is absent
 php tests/test-utility-pages.php # contact/privacy/legal pages stay out of the profile
 php tests/test-tile-text.php     # the line under a tile's title: excerpt, meta description
+php tests/test-row-subjects.php  # two rows may share articles, never a subject
 php tests/test-rows.php          # /pour-vous/ rows: kinds, order, minimums, redundancy
 php tests/test-page.php          # the link's conditions, the page endpoint, the placeholder
 php tests/test-shortcode.php     # [geo_related]: impersonal ranking, markup, handover
@@ -661,8 +693,11 @@ npm.
   button — outlined, not solid, and it should not out-shout the page's own actions.
   Read only two articles about one place: no button, because the page behind it would
   be one strip.
-- On /pour-vous/: rows appear under their own headings, articles already read are dimmed
-  with a check, "Consultés récemment" is last and quieter.
+- On /pour-vous/: rows appear under their own headings, articles already read carry a
+  check, "Consultés récemment" is last.
+- Read two articles about one country: if a hub is titled exactly like that country,
+  there should be a "Destination X" row and **no** "Dans « X »" row above it. A hub with
+  a name of its own — "X en famille" — keeps its row.
 - Narrow the window until a strip overflows: the arrows appear. Widen it until it fits:
   they disappear. Press next at the end of a strip: it returns to the start.
 - Open /pour-vous/ in a fresh private window: rows from the catalogue, and copy that

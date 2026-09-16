@@ -43,6 +43,8 @@ class MFY_Data {
 		$categories = array_flip( MFY_Config::signal_categories() );
 		$slugs      = [];
 
+		// No language here, and none needed: only the keys are read, and a
+		// slug is the same word in every language. Labels are signal_labels().
 		foreach ( tvf_get_registry() as $cat_slug => $cat ) {
 			if ( ! isset( $categories[ $cat_slug ] ) ) {
 				continue;
@@ -55,13 +57,25 @@ class MFY_Data {
 		return $cache = $slugs;
 	}
 
-	/** [ slug => human label ] for the signal slugs, for debug output. */
-	public static function signal_labels(): array {
+	/**
+	 * [ slug => human label ] for the signal slugs, in one language.
+	 *
+	 * Travel Finder stores every label as a language-keyed array and resolves
+	 * it on request, falling back to French for anything not yet translated.
+	 *
+	 * The language is a required argument, not a defaulted one, and that is
+	 * the whole point: tvf_get_slug_labels() itself defaults to 'fr', so this
+	 * plugin asked for French labels on every page in every language and got
+	 * them without a word of complaint. A German reader saw "Séjours en ville"
+	 * as a row heading. Requiring the argument means the next caller cannot
+	 * make the same mistake quietly.
+	 */
+	public static function signal_labels( string $lang ): array {
 		if ( ! self::integration_available() ) {
 			return [];
 		}
 
-		return array_intersect_key( tvf_get_slug_labels(), array_flip( self::signal_slugs() ) );
+		return array_intersect_key( tvf_get_slug_labels( $lang ), array_flip( self::signal_slugs() ) );
 	}
 
 	/**

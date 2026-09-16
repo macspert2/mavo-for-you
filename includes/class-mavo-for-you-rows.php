@@ -119,10 +119,17 @@ class MFY_Rows {
 		$labels = MFY_Config::page_labels( $lang );
 		$caps   = MFY_Config::page_rows_per_kind();
 
+		// Geography is built before the hubs even though it is shown after
+		// them: a hub row that names the same place as a surviving geography
+		// row is a duplicate heading and stands down for it. Only the geo rows
+		// that actually made the cut can suppress anything.
+		$geo_rows = self::geo_rows( $lang, $profile['geo'], $labels, (int) ( $caps['geo'] ?? 4 ) );
+		$hub_rows = self::hub_rows( $lang, $profile['hub_context'], $labels, (int) ( $caps['hub'] ?? 3 ) );
+
 		$by_kind = [
 			'search' => self::search_rows( $lang, $searches, $labels, (int) ( $caps['search'] ?? 2 ) ),
-			'hub'    => self::hub_rows( $lang, $profile['hub_context'], $labels, (int) ( $caps['hub'] ?? 3 ) ),
-			'geo'    => self::geo_rows( $lang, $profile['geo'], $labels, (int) ( $caps['geo'] ?? 4 ) ),
+			'hub'    => self::drop_hubs_named_by_place( $hub_rows, $geo_rows ),
+			'geo'    => $geo_rows,
 			'filter' => self::filter_rows( $lang, $profile['interest'], $labels, (int) ( $caps['filter'] ?? 5 ) ),
 		];
 
@@ -228,15 +235,18 @@ class MFY_Rows {
 				continue;
 			}
 
+			$title = html_entity_decode( (string) $title, ENT_QUOTES, 'UTF-8' );
+
 			$row = self::row(
 				'hub',
 				'hub:' . $hub_id,
-				sprintf( $labels['rowHub'], html_entity_decode( $title, ENT_QUOTES, 'UTF-8' ) ),
+				sprintf( $labels['rowHub'], $title ),
 				[
-					'hub_id' => $hub_id,
-					'type'   => $hub['type'],
-					'label'  => MFY_Hubs::label( (string) $hub['type'], $lang ),
-					'url'    => (string) get_permalink( $hub_id ),
+					'hub_id'   => $hub_id,
+					'type'     => $hub['type'],
+					'label'    => MFY_Hubs::label( (string) $hub['type'], $lang ),
+					'url'      => (string) get_permalink( $hub_id ),
+					'title'    => $title,
 				],
 				// The hub's own order is editorial; eligibility only filters it.
 				self::eligible( $lang, $children )
@@ -248,6 +258,64 @@ class MFY_Rows {
 		}
 
 		return $rows;
+	}
+
+	/**
+	 * Drops a hub row whose title *is* the name of a place a geography row
+	 * already shows.
+	 *
+	 * Rows are allowed to repeat articles — that is the point of the page —
+	 * but not to repeat a heading. "Dans « Angleterre »" directly above
+	 * "Destination Angleterre" is one heading said twice, and no reader will
+	 * take it for two ways of looking at their session.
+	 *
+	 * The geography row wins, because it is the more complete answer: it holds
+	 * every article tagged with the place, which in practice includes the
+	 * hub's children and more besides. What is lost is the hub's editorial
+	 * ordering, which is a smaller thing than a duplicated heading.
+	 *
+	 * The match is on the words, and only when they are the *whole* title. An
+	 * earlier version compared the hub's own geo tag with the row's place
+	 * instead, which is a more principled notion of "the same subject" and a
+	 * worse rule to live with: it also swallowed "Londres en famille" the
+	 * moment a "Destination Londres" row appeared, and a curated guide with a
+	 * name of its own is not the same promise as everything tagged with a
+	 * city. Two headings that read differently are allowed to coexist even
+	 * when they are about the same place.
+	 *
+	 * So: exact title, after lowercasing and folding accents. "Angleterre"
+	 * stands down; "Angleterre en famille" does not. Thematic hubs are never
+	 * suppressed — a theme is not a destination, whatever it is called.
+	 */
+	private static function drop_hubs_named_by_place( array $hub_rows, array $geo_rows ): array {
+		if ( ! $hub_rows || ! $geo_rows ) {
+			return $hub_rows;
+		}
+
+		$names = [];
+
+		foreach ( $geo_rows as $row ) {
+			$name = self::normalize( (string) ( $row['source']['place'] ?? '' ) );
+
+			if ( '' !== $name ) {
+				$names[ $name ] = true;
+			}
+		}
+
+		return array_values( array_filter( $hub_rows, static function ( $row ) use ( $names ) {
+			if ( 'geo' !== ( $row['source']['type'] ?? '' ) ) {
+				return true;
+			}
+
+			$title = self::normalize( (string) ( $row['source']['title'] ?? '' ) );
+
+			return '' === $title || ! isset( $names[ $title ] );
+		} ) );
+	}
+
+	/** Lowercased, accent-folded, whitespace-collapsed — for comparing names. */
+	private static function normalize( string $text ): string {
+		return trim( preg_replace( '/\s+/u', ' ', strtolower( remove_accents( $text ) ) ) );
 	}
 
 	/**
@@ -317,7 +385,7 @@ class MFY_Rows {
 			return [];
 		}
 
-		$names = MFY_Data::signal_labels();
+		$names = MFY_Data::signal_labels( $lang );
 		$rows  = [];
 
 		// build_interest_profile() returns these weight-descending.
@@ -410,7 +478,7 @@ class MFY_Rows {
 		}
 
 		$labels = MFY_Config::page_labels( $lang );
-		$names  = MFY_Data::signal_labels();
+		$names  = MFY_Data::signal_labels( $lang );
 		$slugs  = MFY_Config::page_fallback_filters();
 
 		// Unconfigured: the first few signal slugs the registry offers, which

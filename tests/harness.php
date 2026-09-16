@@ -177,18 +177,53 @@ function mock_primary_hub( int $child_id, int $hub_id, string $type ): void {
 	mock_bust();
 }
 
-/** tvf registry + store stubs. */
-function tvf_get_registry(): array {
+/**
+ * tvf registry + store stubs.
+ *
+ * Labels are language-keyed arrays resolved on request, exactly as the real
+ * registry stores them, and 'kids' is deliberately left untranslated so the
+ * fall-back-to-French path is exercised rather than assumed.
+ */
+function tvf_get_registry_raw(): array {
 	return [
-		'interet' => [ 'filters' => [ 'citytrip' => 'City trip', 'plage_cote' => 'Plage', 'nature_rando' => 'Rando', 'gastronomie' => 'Gastronomie' ] ],
-		'saison'  => [ 'filters' => [ 'ete' => 'Été' ] ],
-		'age_enfants' => [ 'filters' => [ 'ados' => 'Ados', 'kids' => 'Enfants' ] ],
-		'geographie'  => [ 'filters' => [ 'angleterre' => 'Angleterre', 'france' => 'France' ] ],
+		'interet' => [ 'filters' => [
+			'citytrip'     => [ 'fr' => 'Séjour en ville', 'en' => 'City break',   'de' => 'Städtereise' ],
+			'plage_cote'   => [ 'fr' => 'Plage',           'en' => 'Beach',        'de' => 'Strand' ],
+			'nature_rando' => [ 'fr' => 'Rando',           'en' => 'Hiking',       'de' => 'Wandern' ],
+			'gastronomie'  => [ 'fr' => 'Gastronomie',     'en' => 'Food',         'de' => 'Essen' ],
+		] ],
+		'saison' => [ 'filters' => [
+			'ete' => [ 'fr' => 'Été', 'en' => 'Summer', 'de' => 'Sommer' ],
+		] ],
+		'age_enfants' => [ 'filters' => [
+			'ados' => [ 'fr' => 'Ados', 'en' => 'Teenagers', 'de' => 'Jugendliche' ],
+			'kids' => [ 'fr' => 'Enfants' ], // Not yet translated.
+		] ],
+		'geographie' => [ 'filters' => [
+			'angleterre' => [ 'fr' => 'Angleterre', 'en' => 'England', 'de' => 'England' ],
+			'france'     => [ 'fr' => 'France',     'en' => 'France',  'de' => 'Frankreich' ],
+		] ],
 	];
 }
-function tvf_get_slug_labels(): array {
+
+function tvf_resolve_text( array $field, string $lang ): string {
+	return $field[ $lang ] ?? $field['fr'] ?? '';
+}
+
+function tvf_get_registry( string $lang = 'fr' ): array {
 	$out = [];
-	foreach ( tvf_get_registry() as $cat ) { foreach ( $cat['filters'] as $s => $l ) { $out[ $s ] = $l; } }
+	foreach ( tvf_get_registry_raw() as $cat_slug => $cat ) {
+		foreach ( $cat['filters'] as $slug => $label ) {
+			$cat['filters'][ $slug ] = tvf_resolve_text( $label, $lang );
+		}
+		$out[ $cat_slug ] = $cat;
+	}
+	return $out;
+}
+
+function tvf_get_slug_labels( string $lang = 'fr' ): array {
+	$out = [];
+	foreach ( tvf_get_registry( $lang ) as $cat ) { foreach ( $cat['filters'] as $s => $l ) { $out[ $s ] = $l; } }
 	return $out;
 }
 

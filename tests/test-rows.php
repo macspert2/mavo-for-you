@@ -153,6 +153,46 @@ check( 'no two rows are the same set of articles', $signatures === array_unique(
 
 check( 'an English article never reaches a French row', ! in_array( 601, all_ids( $rows ), true ), implode( ',', all_ids( $rows ) ) );
 
+// --- 6b. …and neither are the headings --------------------------------------
+//
+// Travel Finder resolves its labels per language and defaults to French, so a
+// caller that simply forgets the argument gets French headings on a German
+// page and no error at all. That is exactly what shipped once.
+
+foreach ( [ 601, 602, 603, 604, 605, 606 ] as $i => $id ) {
+	mock_post( $id, 'City break ' . ( $i + 1 ), 'en', [ 'citytrip' => 2 ] );
+}
+foreach ( [ 611, 612, 613, 614, 615, 616 ] as $i => $id ) {
+	mock_post( $id, 'Städtereise ' . ( $i + 1 ), 'de', [ 'citytrip' => 2 ] );
+}
+
+function heading_for( string $lang, int $a, int $b ): string {
+	$built = MFY_Rows::build( $lang, [ view( $a, 120, 80, time() ), view( $b, 90, 70, time() - 300 ) ], [], null );
+
+	foreach ( $built['rows'] as $row ) {
+		if ( 'filter' === $row['kind'] ) { return $row['title']; }
+	}
+
+	return '';
+}
+
+$en_heading = heading_for( 'en', 601, 602 );
+$de_heading = heading_for( 'de', 611, 612 );
+
+check( 'an English filter row uses the English label',
+	str_contains( $en_heading, 'City break' ), $en_heading );
+check( 'and not the French one', ! str_contains( $en_heading, 'Séjour en ville' ), $en_heading );
+check( 'a German filter row uses the German label',
+	str_contains( $de_heading, 'Städtereise' ), $de_heading );
+check( 'and the row template is the language\'s own',
+	str_contains( $de_heading, 'Mehr Artikel' ), $de_heading );
+
+// A filter tvf has not translated yet must fall back to French rather than
+// vanish — a row with no heading is worse than a row with a French one.
+check( 'an untranslated filter falls back to French rather than disappearing',
+	'Enfants' === ( MFY_Data::signal_labels( 'de' )['kids'] ?? '' ),
+	json_encode( MFY_Data::signal_labels( 'de' )['kids'] ?? null ) );
+
 // --- 7. Recently viewed: last, and exempt from the minimum ------------------
 
 $recent = row_of( $rows, 'recent' );

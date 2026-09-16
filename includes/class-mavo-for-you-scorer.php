@@ -514,7 +514,7 @@ class MFY_Scorer {
 	 * @return array{0: float, 1: string[], 2: string[], 3: ?array} score, reasons, matched strong slugs, geo affinity.
 	 */
 	private static function score_candidate( array $scores, array $interest, array $search_filters, array $places, array $geo, ?array $hub_relationship, string $lang ): array {
-		$labels  = MFY_Data::signal_labels();
+		$labels  = MFY_Data::signal_labels( $lang );
 		$total   = 0.0;
 		$reasons = [];
 		$strong  = [];

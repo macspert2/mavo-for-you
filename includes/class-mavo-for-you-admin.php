@@ -152,7 +152,7 @@ class MFY_Admin {
 				</tr>
 				<tr>
 					<td><?php esc_html_e( 'Signal filters', 'mavo-for-you' ); ?></td>
-					<td><?php echo esc_html( implode( ', ', array_keys( MFY_Data::signal_labels() ) ) ?: '—' ); ?></td>
+					<td><?php echo esc_html( implode( ', ', MFY_Data::signal_slugs() ) ?: '—' ); ?></td>
 				</tr>
 				<tr>
 					<td><?php esc_html_e( 'Debug mode', 'mavo-for-you' ); ?></td>
