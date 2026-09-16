@@ -454,10 +454,101 @@ class MFY_Data {
 		];
 
 		if ( $with_excerpt ) {
-			$item['excerpt'] = wp_strip_all_tags( html_entity_decode( get_the_excerpt( $post ), ENT_QUOTES, 'UTF-8' ) );
+			$item['excerpt'] = self::description( $post );
 		}
 
 		return $item;
+	}
+
+	/**
+	 * The line of text under a tile's title.
+	 *
+	 * Posts have excerpts and that is what a post tile shows. Pages do not —
+	 * and a hub page is the one page type that reaches a tile, via the hub
+	 * card and the "recently viewed" list. Worse than having no excerpt, a
+	 * page *appears* to have one: get_the_excerpt() falls back to trimming
+	 * post_content, which on a hub built from shortcodes and blocks yields
+	 * either nothing or a sentence of stripped markup.
+	 *
+	 * So a page shows its meta description instead — the sentence an editor
+	 * already wrote to describe that page to a stranger, which is exactly the
+	 * job here. A post falls back to the same sentence only if it somehow has
+	 * no excerpt at all.
+	 */
+	private static function description( WP_Post $post ): string {
+		$is_page = 'page' === $post->post_type;
+
+		$excerpt = static function () use ( $post ): string {
+			return self::clean( (string) get_the_excerpt( $post ) );
+		};
+
+		if ( $is_page ) {
+			$meta = self::meta_description( $post );
+
+			return '' !== $meta ? $meta : $excerpt();
+		}
+
+		$text = $excerpt();
+
+		return '' !== $text ? $text : self::meta_description( $post );
+	}
+
+	/**
+	 * The SEO plugin's description for a post, or ''.
+	 *
+	 * Read from meta rather than through any plugin's API, because there is no
+	 * shared API to read it through and this plugin should not care which SEO
+	 * plugin is installed — or whether one is. Every key that is not there
+	 * simply returns nothing.
+	 *
+	 * Yoast stores templates rather than text ("%%excerpt%% — %%sitename%%"),
+	 * which is meant to be expanded at render time. If Yoast is active it
+	 * expands them itself; if it is not, a string still carrying %%variables%%
+	 * is not a sentence and is discarded rather than shown.
+	 */
+	public static function meta_description( WP_Post $post ): string {
+		$keys = (array) apply_filters( 'mavo_for_you_meta_description_keys', [
+			'_yoast_wpseo_metadesc', // Yoast SEO
+			'rank_math_description', // Rank Math
+			'_seopress_titles_desc', // SEOPress
+			'_aioseo_description',   // All in One SEO (legacy key)
+			'_genesis_description',  // Genesis / StudioPress
+		], $post->ID );
+
+		$found = '';
+
+		foreach ( $keys as $key ) {
+			$value = (string) get_post_meta( $post->ID, (string) $key, true );
+
+			if ( '' === trim( $value ) ) {
+				continue;
+			}
+
+			if ( str_contains( $value, '%%' ) ) {
+				$value = function_exists( 'wpseo_replace_vars' )
+					? (string) wpseo_replace_vars( $value, $post )
+					: '';
+
+				if ( '' === trim( $value ) || str_contains( $value, '%%' ) ) {
+					continue;
+				}
+			}
+
+			$found = self::clean( $value );
+
+			if ( '' !== $found ) {
+				break;
+			}
+		}
+
+		return (string) apply_filters( 'mavo_for_you_meta_description', $found, $post->ID );
+	}
+
+	/** Tile text is plain text: no markup, no entities, no stray whitespace. */
+	private static function clean( string $text ): string {
+		$text = wp_strip_all_tags( html_entity_decode( $text, ENT_QUOTES, 'UTF-8' ) );
+
+		return trim( (string) preg_replace( '/\s+/u', ' ', $text ) );
 	}
 }
 

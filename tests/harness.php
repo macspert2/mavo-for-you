@@ -17,6 +17,7 @@ $GLOBALS['MOCK_SHORTCODES'] = [];
 $GLOBALS['MOCK_CURRENT_POST'] = 0;
 $GLOBALS['MOCK_HUB_TYPE'] = [];    // post_id  => 'geo'|'theme'
 $GLOBALS['MOCK_PRIMARY_HUB'] = []; // post_id  => [type => hub post_id]
+$GLOBALS['MOCK_META'] = [];        // post_id  => [meta_key => value]
 
 function apply_filters( $tag, $value ) { return $value; }
 function absint( $v ) { return abs( (int) $v ); }
@@ -30,8 +31,23 @@ function remove_accents( $s ) { return strtr( $s, [ 'é'=>'e','è'=>'e','ê'=>'e
 function get_the_title( $p ) { $id = is_object( $p ) ? $p->ID : (int) $p; return $GLOBALS['MOCK_POSTS'][ $id ]['title'] ?? "#$id"; }
 function get_permalink( $p ) { $id = is_object($p)?$p->ID:$p; return "https://example.test/$id/"; }
 function get_the_post_thumbnail_url( $p, $s = '' ) { return 'https://example.test/img.jpg'; }
-function get_the_excerpt( $p ) { return 'Excerpt.'; }
-function wp_strip_all_tags( $s ) { return $s; }
+function get_the_excerpt( $p ) {
+	$id = is_object( $p ) ? $p->ID : (int) $p;
+	// WordPress falls back to trimming post_content; a page with neither is ''.
+	return $GLOBALS['MOCK_POSTS'][ $id ]['excerpt'] ?? ( 'page' === ( $GLOBALS['MOCK_POSTS'][ $id ]['type'] ?? 'post' ) ? '' : 'Excerpt.' );
+}
+function get_post_meta( $id, $key = '', $single = false ) {
+	$value = $GLOBALS['MOCK_META'][ (int) $id ][ $key ] ?? '';
+	return $single ? $value : ( '' === $value ? [] : [ $value ] );
+}
+function wp_strip_all_tags( $s, $remove_breaks = false ) {
+	// As core does it: script and style content goes with the tag, not just
+	// the tag, then everything else is stripped and the result trimmed.
+	$s = preg_replace( '@<(script|style)[^>]*?>.*?</\\1>@si', '', (string) $s );
+	$s = strip_tags( $s );
+	if ( $remove_breaks ) { $s = preg_replace( '/[\r\n\t ]+/', ' ', $s ); }
+	return trim( $s );
+}
 function esc_attr( $s ) { return htmlspecialchars( (string) $s, ENT_QUOTES ); }
 function esc_url( $s ) { return (string) $s; }
 function add_shortcode( $tag, $cb ) { $GLOBALS['MOCK_SHORTCODES'][ $tag ] = $cb; }
@@ -347,6 +363,15 @@ function mock_post( int $id, string $title, string $lang, array $weights, string
 	$GLOBALS['MOCK_POSTS'][ $id ]   = [ 'title' => $title, 'lang' => $lang, 'status' => $status, 'type' => $type, 'slug' => $slug, 'content' => '' ];
 	$GLOBALS['MOCK_WEIGHTS'][ $id ] = [ 'lang' => $lang, 'slugs' => $weights ];
 	mock_bust();
+}
+
+/** Gives a post an excerpt of its own, or a meta value an SEO plugin would store. */
+function mock_excerpt( int $post_id, string $excerpt ): void {
+	$GLOBALS['MOCK_POSTS'][ $post_id ]['excerpt'] = $excerpt;
+}
+
+function mock_meta( int $post_id, string $key, string $value ): void {
+	$GLOBALS['MOCK_META'][ $post_id ][ $key ] = $value;
 }
 
 /** Creates the suggestions page a language links to, at its configured slug. */

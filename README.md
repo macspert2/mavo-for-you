@@ -340,6 +340,37 @@ assets/css/mavo-for-you-page.css     row + strip styling (tiles reuse .mv-tile)
 tests/                               plain-PHP suites, no tooling required
 ```
 
+## The line under a tile's title
+
+Tile markup is built twice — `MFY_Shortcode::card()` in PHP for the cached block, and
+`card()` in `assets/js/mavo-for-you.js` for the personalised block and every
+`/pour-vous/` row — and the two have to agree character for character. The *data* behind
+both comes from `MFY_Data::format_item()`, so the rule lives there once. (The `.mv-tile*`
+classes themselves are the child theme's `mv-tiles.css`; this plugin only styles the
+section around them.)
+
+Posts show their excerpt. Pages show their **SEO meta description** instead, because
+pages have no excerpt — and worse than having none, they appear to have one:
+`get_the_excerpt()` falls back to trimming `post_content`, which on a hub built from
+shortcodes and blocks yields either nothing or a sentence of stripped markup. A hub page
+is the one page type that reaches a tile, via the hub card and "recently viewed".
+
+The description is read straight from meta, trying Yoast, Rank Math, SEOPress, AIOSEO's
+legacy key and Genesis in turn, because there is no shared API to read it through and
+this plugin should not care which plugin is installed — or whether one is. A key that is
+not there returns nothing. Two guards matter:
+
+- **A template is not a sentence.** Yoast stores `%%excerpt%% — %%sitename%%` and expands
+  it at render time. If Yoast is active this expands it the same way; if it is not, a
+  string still carrying `%%variables%%` is discarded rather than shown.
+- **Nothing is invented.** A page with neither a description nor a hand-written excerpt
+  shows no line at all, which is what an empty `.mv-tile__description` is for.
+
+Fallbacks run both ways: a page with a hand-written excerpt and no description uses the
+excerpt, and a post with no excerpt falls back to its description. Point it somewhere
+else with `mavo_for_you_meta_description_keys`, or override the result outright with
+`mavo_for_you_meta_description`.
+
 ## What is not tracked
 
 Beyond the obvious (home, search, archives, 404, feeds, admin, unpublished), contact,
@@ -567,6 +598,8 @@ The /pour-vous/ page: `mavo_for_you_page_langs`, `mavo_for_you_page_slugs`,
 Already read: `mavo_for_you_mark_read`, `mavo_for_you_mark_read_everywhere`,
 `mavo_for_you_mark_read_selectors`.
 
+Tile text: `mavo_for_you_meta_description`, `mavo_for_you_meta_description_keys`.
+
 Behaviour: `mavo_for_you_track_post`, `mavo_for_you_show_block`,
 `mavo_for_you_excluded_page_slugs`,
 `mavo_for_you_signal_categories`, `mavo_for_you_trackable_post_types`,
@@ -584,6 +617,7 @@ php tests/test-hubs.php      # hub placement, ancestor walk, validation, recent 
 php tests/test-hub-children.php  # sibling candidates, eligibility, bounded pools
 php tests/test-no-hubs.php       # every hub feature off when Hub Manager is absent
 php tests/test-utility-pages.php # contact/privacy/legal pages stay out of the profile
+php tests/test-tile-text.php     # the line under a tile's title: excerpt, meta description
 php tests/test-rows.php          # /pour-vous/ rows: kinds, order, minimums, redundancy
 php tests/test-page.php          # the link's conditions, the page endpoint, the placeholder
 php tests/test-shortcode.php     # [geo_related]: impersonal ranking, markup, handover
