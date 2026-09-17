@@ -50,6 +50,15 @@ check( 'the hub relationship is spelled out in debug',
 // --- 2. Eligibility still applies to children -------------------------------
 check( 'a child with no filter scored 2 is not offered', ! in_array( 203, $got, true ), titles( $r ) );
 check( 'a draft child is never offered', ! in_array( 204, $got, true ), titles( $r ) );
+
+// Directly, because the assertion above would survive losing it: every hub
+// child also passes through MFY_Data::filter_eligible(), whose SQL filters on
+// post_status. Two independent guards, and this is the one that belongs to
+// mavo-hub-manager's API — which defaulted to post_status 'any' until that
+// default was flipped, and which this plugin still does not rely on.
+$direct_children = MFY_Hubs::children( 200, 'geo', 20 );
+check( 'MFY_Hubs::children() excludes the draft on its own', ! in_array( 204, $direct_children, true ), implode( ',', $direct_children ) );
+check( 'and still returns the published ones', in_array( 202, $direct_children, true ), implode( ',', $direct_children ) );
 check( 'a child in another language is never offered', ! in_array( 205, $got, true ), titles( $r ) );
 
 // --- 3. The hub relationship can carry a child no score would have found ----

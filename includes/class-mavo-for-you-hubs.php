@@ -249,8 +249,16 @@ class MFY_Hubs {
 		}
 
 		$children = array_map( 'absint', mavo_get_hub_children( $hub_id, $type, [
-			// The helper defaults to post_status "any"; a draft child must
-			// never reach a reader.
+			// Stated rather than inherited. mavo-hub-manager defaults to
+			// published now, but it defaulted to 'any' until recently, and a
+			// draft reaching a reader should not depend on another plugin's
+			// default staying where it is.
+			//
+			// It is the second of two guards, not the only one —
+			// MFY_Data::filter_eligible() filters on post_status in SQL and
+			// every child passes through it. tests/test-hub-children.php
+			// therefore checks this one directly, or removing it would break
+			// nothing any test could see.
 			'post_status'    => 'publish',
 			'posts_per_page' => $limit,
 		] ) );

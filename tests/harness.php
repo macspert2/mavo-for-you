@@ -146,6 +146,17 @@ function mavo_get_hub_ancestors( int $post_id, string $type ): array {
 /**
  * Derives children the way the real helper does — from each child's own meta,
  * never from a list stored on the hub.
+ *
+ * The default here is deliberately the *weaker* contract. mavo-hub-manager now
+ * defaults to published, but this plugin does not rely on that — it asks for
+ * 'publish' explicitly — and a stub that encoded the friendly default would
+ * quietly make this suite depend on another plugin's current choice.
+ *
+ * Note that it is not this argument alone that keeps drafts away from readers:
+ * every hub child also passes through MFY_Data::filter_eligible(), whose SQL
+ * carries `post_status = 'publish'`. So MFY_Hubs::children() is checked
+ * directly in tests/test-hub-children.php, since the end-to-end assertion
+ * would survive losing it.
  */
 function mavo_get_hub_children( int $hub_id, string $type, array $args = [] ): array {
 	$status = $args['post_status'] ?? 'any';

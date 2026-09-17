@@ -297,8 +297,16 @@ add to it. Children are still ordinary articles, so **§10 eligibility applies t
 `mavo_for_you_hub_child_hubs` (3) hubs are expanded, each by a capped query
 (`mavo_for_you_hub_child_pool_size`, 20).
 
-`mavo_get_hub_children()` defaults to `post_status => 'any'`, so `publish` is passed
-explicitly — a draft child must never reach a reader.
+`publish` is passed to `mavo_get_hub_children()` explicitly. It is also that helper's
+default now — it was `'any'` until recently, and this call is the reason it changed —
+but it is still stated here rather than inherited, because a draft reaching a reader
+should not depend on another plugin's default staying put.
+
+Drafts are in fact kept out twice: `MFY_Data::filter_eligible()` filters on
+`post_status` in SQL, and every hub child passes through it. So the argument above is
+the second guard, not the only one, which is why `tests/test-hub-children.php` checks
+`MFY_Hubs::children()` directly — the end-to-end assertion alone would survive losing
+it.
 
 ### Scoring
 
