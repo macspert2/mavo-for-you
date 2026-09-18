@@ -211,6 +211,13 @@ class MFY_Data {
 	 *
 	 * Nothing personal is stored: the cached rows are post IDs, match counts
 	 * and the site's own view counter. The same rows are served to everyone.
+	 *
+	 * That view counter is `views`, maintained by recent-post-popularity as a
+	 * rolling ~90-day total: a post with no hits in the window is reset to 0,
+	 * not left at its historical figure. It is only ever a tie-break here
+	 * (ORDER BY hits DESC, views DESC), so the effect is mild — but it means
+	 * ties are settled by what is being read *now*, and an older article that
+	 * has gone quiet sorts alongside the never-read ones.
 	 */
 	private static function candidate_pool( string $lang, array $strong_slugs, int $limit ): array {
 		$strong_slugs = array_values( array_intersect( $strong_slugs, self::signal_slugs() ) );

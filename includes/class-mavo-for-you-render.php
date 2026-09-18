@@ -18,6 +18,7 @@ class MFY_Render {
 	public static function init(): void {
 		add_action( 'wp_enqueue_scripts', [ __CLASS__, 'enqueue' ] );
 		add_action( 'template_redirect', [ __CLASS__, 'protect_debug_response' ] );
+		add_filter( 'cache_enabler_bypass_cache', [ __CLASS__, 'bypass_cache' ] );
 
 		if ( self::theme_hook_available() ) {
 			// GeneratePress fires this inside the <article>, after
@@ -30,8 +31,19 @@ class MFY_Render {
 
 	/**
 	 * A debug page view carries a REST nonce in its markup, so it must never
-	 * reach a shared cache. Logged-in visitors normally bypass Swift and
-	 * Cloudflare anyway; this makes it explicit rather than assumed.
+	 * reach a shared cache.
+	 *
+	 * Two mechanisms, the same pair mavo-contact uses and for the same reason:
+	 * DONOTCACHEPAGE is a widely-followed convention rather than an API, while
+	 * cache_enabler_bypass_cache is the documented filter of the cache that
+	 * actually runs on this site. The comment here used to say Swift
+	 * Performance, which has since been replaced by Cache Enabler — a good
+	 * illustration of why resting on a convention is not enough.
+	 *
+	 * Three things would each have to fail before a nonce leaked into a shared
+	 * cache — the request carries a query string, the viewer is logged in, and
+	 * both flags below. That is the point: none of them is this plugin's to
+	 * guarantee.
 	 */
 	public static function protect_debug_response(): void {
 		if ( ! self::debug_requested() ) {
@@ -43,6 +55,30 @@ class MFY_Render {
 		}
 
 		nocache_headers();
+	}
+
+	/**
+	 * Cache Enabler's own bypass decision.
+	 *
+	 * Deliberately tests the query argument rather than calling
+	 * debug_requested(): that asks current_user_can(), and this filter can run
+	 * before the current user is established. Refusing to cache a request that
+	 * merely asks for debug output costs nothing — a visitor without the
+	 * capability gets an ordinary page, just an uncached one.
+	 *
+	 * @param mixed $bypass Whether the cache is already being bypassed.
+	 */
+	public static function bypass_cache( $bypass ): bool {
+		if ( $bypass ) {
+			return true;
+		}
+
+		if ( defined( 'DONOTCACHEPAGE' ) && DONOTCACHEPAGE ) {
+			return true;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- a cache decision, not a state change.
+		return ! empty( $_GET[ MFY_Config::DEBUG_QUERY_ARG ] );
 	}
 
 	private static function theme_hook_available(): bool {

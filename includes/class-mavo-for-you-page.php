@@ -46,6 +46,13 @@ class MFY_Page {
 		add_filter( 'wp_robots', [ __CLASS__, 'robots' ] );
 		add_filter( 'wpseo_robots_array', [ __CLASS__, 'seo_plugin_robots' ] );
 		add_filter( 'rank_math/frontend/robots', [ __CLASS__, 'seo_plugin_robots' ] );
+
+		// …and tell IndexNow the same thing. Those three filters apply noindex
+		// at render time, so nothing is stored in post meta — which is the only
+		// place mavo-indexnow's own noindex detection can look. Without this,
+		// saving the suggestions page announced its URL to Bing and Yandex as
+		// worth indexing, moments before serving them a noindex.
+		add_filter( 'indexnow_post_is_eligible', [ __CLASS__, 'never_submit_self' ], 10, 2 );
 	}
 
 	// -------------------------------------------------------------------------
@@ -251,6 +258,37 @@ class MFY_Page {
 		}
 
 		return $should_track;
+	}
+
+	/**
+	 * Never announce the suggestions page to IndexNow.
+	 *
+	 * The page carries noindex (see robots() above), but through render-time
+	 * filters rather than stored meta — and stored meta is all that
+	 * mavo-indexnow can inspect when deciding whether a saved post is worth
+	 * submitting. So it would happily submit a URL this plugin then asks
+	 * crawlers to ignore.
+	 *
+	 * Uses is_suggestions_page() rather than page_id(), so a page an editor
+	 * created under a slug of its own is covered too — the same looser test
+	 * the REST endpoint accepts.
+	 *
+	 * @param bool    $eligible Whether mavo-indexnow considers the post eligible.
+	 * @param WP_Post $post     The post being saved.
+	 * @return bool
+	 */
+	public static function never_submit_self( $eligible, $post ) {
+		if ( ! $post instanceof WP_Post || ! $eligible ) {
+			return $eligible;
+		}
+
+		$lang = MFY_Data::post_lang( (int) $post->ID );
+
+		if ( '' === $lang ) {
+			return $eligible;
+		}
+
+		return self::is_suggestions_page( (int) $post->ID, $lang ) ? false : $eligible;
 	}
 
 	// -------------------------------------------------------------------------
